@@ -1,12 +1,12 @@
 #ifndef TRACKEDWINDOWS_H
 #define TRACKEDWINDOWS_H
 
+#include <minwindef.h>
 #include <QHash>
 #include <QIcon>
 #include <QList>
 #include <QMutex>
 #include <QString>
-#include <minwindef.h>
 
 struct WindowDetails
 {
@@ -41,10 +41,15 @@ public:
     bool removeWindow(const HWND hWnd);
 
     [[nodiscard]] inline QHash<HWND, WindowDetails> getWindows() const { return openWindows; };
-    [[nodiscard]] inline QList<HWND> getWindowOrder() const
+    [[nodiscard]] inline int getWindowOrder(HWND hWnd) const
     {
-        return openWindowOrders;
-    };
+        return openWindowOrders.indexOf(hWnd);
+    }
+
+    [[nodiscard]] inline auto getWindowCount() const
+    {
+        return openWindows.size();
+    }
 
 protected:
     TrackedWindows() {}
@@ -56,6 +61,8 @@ protected:
 private:
     static TrackedWindows *instance;
     static QMutex mutex;
+
+    int windowOrderIdx{0};
 };
 
 #endif // TRACKEDWINDOWS_H

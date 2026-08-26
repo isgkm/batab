@@ -5,7 +5,6 @@
 
 #include <QMainWindow>
 #include <QSystemTrayIcon>
-// #include <windows.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -21,7 +20,6 @@ public:
     explicit Batab(QWidget *parent = nullptr);
     ~Batab() override;
 
-    // TODO: can this be avoided with signals and slots?
     [[nodiscard]] inline static Batab *getUI() { return s_ui; }
     [[nodiscard]] inline AppSwitcher *getAppSwitcher()
     {

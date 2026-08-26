@@ -7,7 +7,6 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::AppSwitcher)
     , listModel(new QStandardItemModel())
-    // , shownApps(new QList<HWND>())
 {
     ui->setupUi(this);
 
@@ -71,8 +70,12 @@ void AppSwitcher::showEvent(QShowEvent *event)
 {
     this->listModel->clear();
 
+    auto trackedWindows = TrackedWindows::getInstance();
+    this->listModel->setRowCount(trackedWindows->getWindowCount());
+
     for (const auto &[key, wDetails] :
-         TrackedWindows::getInstance()->getWindows().asKeyValueRange()) {
+         trackedWindows->getWindows().asKeyValueRange())
+    {
         // if (shownApps->contains(key))
         //     continue;
 
@@ -83,7 +86,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
         item->setToolTip(wDetails.title);
 
         auto len = wDetails.title.length();
-        item->setText(len > 50 ? wDetails.title.mid(0, 50) + "..." : wDetails.title);
+        item->setText(len > 50 ? wDetails.title.mid(0, 50) + "..."
+                               : wDetails.title);
 
         item->setIcon(wDetails.icon);
 
@@ -91,19 +95,15 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
         item->setData(QVariant::fromValue(wdi), InternalListDataRole);
 
-        this->listModel->appendRow(item);
+        // this->listModel->appendRow(item);
+        this->listModel->setItem(trackedWindows->getWindowOrder(key), item);
+
         // this->shownApps->append(key);
         // this->listModel->insertRow(wDetails.listOrder - 1, item);
     }
 
     QWidget::showEvent(event);
 }
-
-// void AppSwitcher::hideEvent(QHideEvent *event)
-// {
-
-//     QWidget::hideEvent(event);
-// }
 
 void AppSwitcher::keyPressEvent(QKeyEvent *event)
 {

@@ -3,7 +3,6 @@
 
 #include <QStandardItemModel>
 #include <QWidget>
-// #include <qplaintextedit.h>
 
 namespace Ui {
 class AppSwitcher;
@@ -35,7 +34,6 @@ protected:
 private:
     Ui::AppSwitcher *ui;
     QStandardItemModel *listModel;
-    // QList<HWND> *shownApps;
 };
 
 #endif // APPSWITCHER_H

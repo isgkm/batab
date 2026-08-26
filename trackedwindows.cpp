@@ -23,7 +23,7 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
 
         this->openWindows.emplace(hWnd, windowDetails);
 
-        openWindowOrders.append(hWnd);
+        this->openWindowOrders.emplaceBack(hWnd);
     }
 }
 
@@ -32,7 +32,7 @@ bool TrackedWindows::removeWindow(const HWND hWnd)
     if (this->openWindows.contains(hWnd)) {
         qDebug() << "Removing: " << hWnd << " from list.";
 
-        openWindowOrders.removeFirst();
+        this->openWindowOrders.removeOne(hWnd);
 
         return this->openWindows.remove(hWnd);
     }

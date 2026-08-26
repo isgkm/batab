@@ -29,19 +29,6 @@ Batab::Batab(QWidget *parent)
     WinProcs::registerLLKHook();
     WinProcs::registerWEHook();
 
-    // hookLowLevelKeyboard = SetWindowsHookExW(WH_KEYBOARD_LL,
-    //                                          WinProcs::lowLevelKeyboardProc,
-    //                                          GetModuleHandle(NULL),
-    //                                          0);
-
-    // hookWindowsEvent = SetWinEventHook(EVENT_OBJECT_CREATE,
-    //                                    EVENT_OBJECT_UNCLOAKED,
-    //                                    NULL,
-    //                                    WinProcs::winEventProc,
-    //                                    0,
-    //                                    0,
-    //                                    WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
-
     createActions();
     createTrayIcon();
 
@@ -56,8 +43,6 @@ Batab::Batab(QWidget *parent)
 
 Batab::~Batab()
 {
-    // UnhookWindowsHookEx(hookLowLevelKeyboard);
-    // UnhookWinEvent(hookWindowsEvent);
     WinProcs::unregisterLLKHook();
     WinProcs::unregisterWEHook();
 

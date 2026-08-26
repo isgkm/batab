@@ -59,7 +59,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
                     }, Qt::QueuedConnection);
                 }
 
-                // s_ui->timer->start(100);
                 return 1;
             }
         }
