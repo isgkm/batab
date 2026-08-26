@@ -41,13 +41,17 @@ public:
     bool removeWindow(const HWND hWnd);
 
     [[nodiscard]] inline QHash<HWND, WindowDetails> getWindows() const { return openWindows; };
+    [[nodiscard]] inline QList<HWND> getWindowOrder() const
+    {
+        return openWindowOrders;
+    };
 
 protected:
     TrackedWindows() {}
     ~TrackedWindows() {}
 
     QHash<HWND, WindowDetails> openWindows;
-    QList<HWND> openWindowsOrder;
+    QList<HWND> openWindowOrders;
 
 private:
     static TrackedWindows *instance;

@@ -1,6 +1,6 @@
 #include "trackedwindows.h"
+
 #include <QDebug>
-#include <windef.h>
 
 TrackedWindows *TrackedWindows::instance = nullptr;
 QMutex TrackedWindows::mutex;
@@ -19,9 +19,11 @@ TrackedWindows *TrackedWindows::getInstance()
 void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
 {
     if (!this->openWindows.contains(hWnd)) {
+        qDebug() << "Adding: " << hWnd << " [" << windowDetails.title << "] to list.";
+
         this->openWindows.emplace(hWnd, windowDetails);
 
-        qDebug() << "Adding: " << hWnd << " to list.";
+        openWindowOrders.append(hWnd);
     }
 }
 
@@ -29,6 +31,8 @@ bool TrackedWindows::removeWindow(const HWND hWnd)
 {
     if (this->openWindows.contains(hWnd)) {
         qDebug() << "Removing: " << hWnd << " from list.";
+
+        openWindowOrders.removeFirst();
 
         return this->openWindows.remove(hWnd);
     }

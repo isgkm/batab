@@ -1,9 +1,53 @@
 #include "util.h"
-#include <QDebug>
+
 #include "trackedwindows.h"
+
+#include <dwmapi.h>
+#include <QDebug>
 #include <windows.h>
 
-Util::Util() {}
+bool Util::isAltTabWindow(const HWND hWnd)
+{
+    if (GetWindowTextLengthW(hWnd) == 0)
+    {
+        return false;
+    }
+
+    // if (hWnd == GetShellWindow()) {
+    //     return false;
+    // }
+
+    if (!IsWindowVisible(hWnd))
+    {
+        return false;
+    }
+
+    if (GetAncestor(hWnd, GA_ROOT) != hWnd)
+    {
+        return false;
+    }
+
+    // LONG style = GetWindowLongW(hWnd, GWL_STYLE);
+    // if (style & WS_DISABLED) {
+    //     return TRUE;
+    // }
+
+    LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
+    if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW))
+    {
+        return false;
+    }
+
+    DWORD cloaked = FALSE;
+    HRESULT result =
+        DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
+    if (result == S_OK && cloaked == DWM_CLOAKED_SHELL)
+    {
+        return false;
+    }
+
+    return true;
+}
 
 QIcon Util::getIconFromHWND(const HWND hWnd)
 {
@@ -19,10 +63,6 @@ QIcon Util::getIconFromHWND(const HWND hWnd)
 
     if (result == 0) {
         qDebug() << "SendMessageTimeoutW failed";
-    }
-
-    if (hIcon == nullptr) {
-        qDebug() << "hIcon is nullptr";
     }
 
     if (!hIcon) {

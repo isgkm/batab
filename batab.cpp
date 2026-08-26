@@ -1,50 +1,13 @@
 #include "batab.h"
+
+#include "ui_batab.h"
+#include "winprocs.h"
+
 #include <QMenu>
 #include <QMessageBox>
 #include <QTimer>
-#include "ui_batab.h"
-#include "winprocs.h"
-#include <dwmapi.h>
-#include <windows.h>
 
 Batab *Batab::s_ui = nullptr;
-
-bool Batab::isAltTabWindow(const HWND hWnd)
-{
-    if (GetWindowTextLengthW(hWnd) == 0) {
-        return false;
-    }
-
-    // if (hWnd == GetShellWindow()) {
-    //     return false;
-    // }
-
-    if (!IsWindowVisible(hWnd)) {
-        return false;
-    }
-
-    if (GetAncestor(hWnd, GA_ROOT) != hWnd) {
-        return false;
-    }
-
-    // LONG style = GetWindowLongW(hWnd, GWL_STYLE);
-    // if (style & WS_DISABLED) {
-    //     return TRUE;
-    // }
-
-    LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
-    if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW)) {
-        return false;
-    }
-
-    DWORD cloaked = FALSE;
-    HRESULT result = DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
-    if (result == S_OK && cloaked == DWM_CLOAKED_SHELL) {
-        return false;
-    }
-
-    return true;
-}
 
 Batab::Batab(QWidget *parent)
     : QMainWindow(parent)
@@ -52,7 +15,6 @@ Batab::Batab(QWidget *parent)
 {
     ui->setupUi(this);
     s_ui = this;
-
     appSwitcher = new AppSwitcher();
 
     EnumWindows(WinProcs::enumWindowsProc, NULL);
@@ -99,6 +61,8 @@ Batab::~Batab()
     WinProcs::unregisterLLKHook();
     WinProcs::unregisterWEHook();
 
+    s_ui = nullptr;
+    delete appSwitcher;
     delete ui;
 }
 

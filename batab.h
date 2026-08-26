@@ -1,10 +1,11 @@
 #ifndef BATAB_H
 #define BATAB_H
 
+#include "appswitcher.h"
+
 #include <QMainWindow>
 #include <QSystemTrayIcon>
-#include "appswitcher.h"
-#include <windows.h>
+// #include <windows.h>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -22,8 +23,10 @@ public:
 
     // TODO: can this be avoided with signals and slots?
     [[nodiscard]] inline static Batab *getUI() { return s_ui; }
-    [[nodiscard]] inline AppSwitcher *getAppSwitcher() { return appSwitcher; }
-    static bool isAltTabWindow(const HWND hWnd);
+    [[nodiscard]] inline AppSwitcher *getAppSwitcher()
+    {
+        return appSwitcher;
+    }
 
 signals:
     void timerCompleted();

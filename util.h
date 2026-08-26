@@ -7,7 +7,10 @@
 class Util final
 {
 public:
-    Util();
+    Util() = default;
+
+    [[nodiscard]] static bool isAltTabWindow(const HWND hWnd);
+
     [[nodiscard]] static QIcon getIconFromHWND(const HWND hWnd);
     static void focusWindowWithHWND(const HWND hWnd);
     static void focusWindowAtIndex(const QModelIndex &listIndex);

@@ -1,12 +1,14 @@
 #include "winprocs.h"
-#include <QDebug>
+
 #include "appswitcher.h"
 #include "batab.h"
 #include "trackedwindows.h"
 #include "util.h"
 
-HHOOK WinProcs::hookLowLevelKeyboard = nullptr;
-HWINEVENTHOOK WinProcs::hookWindowsEvent = nullptr;
+#include <QDebug>
+
+HHOOK WinProcs::hookLowLevelKeyboard{nullptr};
+HWINEVENTHOOK WinProcs::hookWindowsEvent{nullptr};
 
 bool WinProcs::isLLKHooked{};
 bool WinProcs::isWEHooked{};
@@ -19,7 +21,8 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
 
     GetWindowTextW(hWnd, windowTitle.data(), windowTitle.size() + 1);
 
-    if (!Batab::isAltTabWindow(hWnd)) {
+    if (!Util::isAltTabWindow(hWnd))
+    {
         return TRUE;
     }
 
@@ -30,8 +33,6 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
                                              {.title = QString::fromStdWString(windowTitle),
                                               .PID = processId,
                                               .icon = Util::getIconFromHWND(hWnd)});
-
-    qDebug() << hWnd << ":  " << windowTitle;
 
     return TRUE;
 }
@@ -44,21 +45,22 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
         if (p->vkCode == VK_TAB) {
             bool altDown = p->flags & LLKHF_ALTDOWN;
 
-            if (altDown) {
-                if (wParam == WM_SYSKEYDOWN) {
-                    qDebug() << "alt+tab detected";
+            if (altDown && wParam == WM_SYSKEYDOWN) {
+                qDebug() << "alt+tab detected";
 
-                    keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+                keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
 
-                    // s_ui->timer->start(100);
-
-                    Batab::getUI()->getAppSwitcher()->show();
-                    Batab::getUI()->getAppSwitcher()->activateWindow();
-                    Batab::getUI()->getAppSwitcher()->setFocus();
-                    // Batab::getUI()->getAppSwitcher()->focusAppSearch();
-
-                    return 1;
+                Batab* ui = Batab::getUI();
+                if(ui && ui->getAppSwitcher()){
+                    QMetaObject::invokeMethod(ui->getAppSwitcher(), [ui](){
+                        Batab::getUI()->getAppSwitcher()->show();
+                        Batab::getUI()->getAppSwitcher()->activateWindow();
+                        Batab::getUI()->getAppSwitcher()->setFocus();
+                    }, Qt::QueuedConnection);
                 }
+
+                // s_ui->timer->start(100);
+                return 1;
             }
         }
     }
@@ -90,7 +92,8 @@ void CALLBACK WinProcs::winEventProc(HWINEVENTHOOK hWinEventHook,
         return;
     }
 
-    if (!Batab::isAltTabWindow(hWnd)) {
+    if (!Util::isAltTabWindow(hWnd))
+    {
         return;
     }
 
@@ -106,11 +109,11 @@ void CALLBACK WinProcs::winEventProc(HWINEVENTHOOK hWinEventHook,
                                                   .PID = processId,
                                                   .icon = Util::getIconFromHWND(hWnd)});
 
-        for (const auto &[hWnd, windowDetails] :
-             TrackedWindows::getInstance()->getWindows().asKeyValueRange()) {
-            qDebug() << "[" << windowDetails.PID << "]: {" << hWnd << "}, " << windowDetails.title
-                     << "\n";
-        }
+        // for (const auto &[hWnd, windowDetails] :
+        //      TrackedWindows::getInstance()->getWindows().asKeyValueRange()) {
+        //     qDebug() << "[" << windowDetails.PID << "]: {" << hWnd << "}, " << windowDetails.title
+        //              << "\n";
+        // }
     }
 }
 

@@ -7,7 +7,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::AppSwitcher)
     , listModel(new QStandardItemModel())
-    , shownApps(new QList<HWND>())
+    // , shownApps(new QList<HWND>())
 {
     ui->setupUi(this);
 
@@ -113,11 +113,10 @@ void AppSwitcher::keyPressEvent(QKeyEvent *event)
 void AppSwitcher::keyReleaseEvent(QKeyEvent *event)
 {
     qDebug() << "release: " << event->key() << " with modifiers: " << event->modifiers();
-    static int i = 0;
 
     auto key = event->key();
     if (key == Qt::Key_Tab) {
-        qDebug() << "tab pressed " << ++i;
+        qDebug() << "tab pressed ";
 
         auto model = this->ui->LV_openApps->model();
         int rowCount = model->rowCount();
@@ -134,7 +133,7 @@ void AppSwitcher::keyReleaseEvent(QKeyEvent *event)
             this->ui->LV_openApps->selectionModel()->select(nextIdx,
                                                             QItemSelectionModel::ClearAndSelect);
 
-            // Util::focusWindowAtIndex(nextIdx);
+             // Util::focusWindowAtIndex(nextIdx);
         }
     } else if (key >= Qt::Key_1 && key <= Qt::Key_9) {
         key -= Qt::Key_0;
@@ -145,8 +144,8 @@ void AppSwitcher::keyReleaseEvent(QKeyEvent *event)
         if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
             auto idata = data.value<WindowDetailsInternal>();
 
-            // qDebug() << "Clicked pid: " << idata.PID << " hwnd: " << idata.hWnd
-            // << " title: " << idata.title;
+            qDebug() << "Clicked pid: " << idata.PID << " hwnd: " << idata.hWnd
+            << " title: " << idata.title;
 
             Util::focusWindowWithHWND(idata.hWnd);
         }
