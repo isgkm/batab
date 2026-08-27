@@ -71,35 +71,44 @@ void AppSwitcher::showEvent(QShowEvent *event)
     this->listModel->clear();
 
     auto trackedWindows = TrackedWindows::getInstance();
-    this->listModel->setRowCount(trackedWindows->getWindowCount());
+    const auto ordered = trackedWindows->getOrderedWindows();
+    const auto windows = trackedWindows->getWindows();
 
-    for (const auto &[key, wDetails] :
-         trackedWindows->getWindows().asKeyValueRange())
+    this->listModel->setRowCount(trackedWindows->getWindowCount());
+    // qDebug() << trackedWindows->getOrderedWindows();
+
+    int row = 0;
+    for (HWND hWnd : ordered)
     {
-        // if (shownApps->contains(key))
-        //     continue;
+        if (!hWnd)
+            continue;
+
+        const auto it = windows.constFind(hWnd);
+        if (it == windows.constEnd())
+            continue;
+
+        const WindowDetails &wDetails = it.value();
 
         QStandardItem *item = new QStandardItem();
 
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled);
         item->setEditable(false);
+        // wDetails.title = wDetails.title;
         item->setToolTip(wDetails.title);
 
         auto len = wDetails.title.length();
-        item->setText(len > 50 ? wDetails.title.mid(0, 50) + "..."
+        item->setText(len > 50 ? wDetails.title.left(50) + "..."
                                : wDetails.title);
 
         item->setIcon(wDetails.icon);
 
-        WindowDetailsInternal wdi{.hWnd = key, .title = wDetails.title, .PID = wDetails.PID};
+        WindowDetailsInternal wdi{
+            .hWnd = hWnd, .title = wDetails.title, .PID = wDetails.PID};
 
         item->setData(QVariant::fromValue(wdi), InternalListDataRole);
 
-        // this->listModel->appendRow(item);
-        this->listModel->setItem(trackedWindows->getWindowOrder(key), item);
-
-        // this->shownApps->append(key);
-        // this->listModel->insertRow(wDetails.listOrder - 1, item);
+        this->listModel->setItem(row, item);
+        ++row;
     }
 
     QWidget::showEvent(event);

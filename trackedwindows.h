@@ -5,6 +5,7 @@
 #include <QHash>
 #include <QIcon>
 #include <QList>
+#include <QMap>
 #include <QMutex>
 #include <QString>
 
@@ -43,7 +44,12 @@ public:
     [[nodiscard]] inline QHash<HWND, WindowDetails> getWindows() const { return openWindows; };
     [[nodiscard]] inline int getWindowOrder(HWND hWnd) const
     {
-        return openWindowOrders.indexOf(hWnd);
+        return m_slotOf.value(hWnd, -1);
+    }
+
+    [[nodiscard]] inline QVector<HWND> getOrderedWindows() const
+    {
+        return m_slots;
     }
 
     [[nodiscard]] inline auto getWindowCount() const
@@ -56,7 +62,10 @@ protected:
     ~TrackedWindows() {}
 
     QHash<HWND, WindowDetails> openWindows;
-    QList<HWND> openWindowOrders;
+
+    QVector<HWND> m_slots;
+    QHash<HWND, int> m_slotOf;
+    QMap<int, bool> m_freeSlots;
 
 private:
     static TrackedWindows *instance;
