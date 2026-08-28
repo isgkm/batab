@@ -6,6 +6,22 @@
 #include <QDebug>
 #include <windows.h>
 
+bool isRootAltTabCandidate(const HWND hWnd)
+{
+    HWND hWndWalk = GetAncestor(hWnd, GA_ROOTOWNER);
+    HWND hWndTry{};
+
+    while ((hWndTry = GetLastActivePopup(hWndWalk)) != hWndWalk)
+    {
+        if (IsWindowVisible(hWndTry))
+            break;
+
+        hWndWalk = hWndTry;
+    }
+
+    return hWndWalk == hWnd;
+}
+
 bool Util::isAltTabWindow(const HWND hWnd)
 {
     if (GetWindowTextLengthW(hWnd) == 0)
@@ -13,24 +29,15 @@ bool Util::isAltTabWindow(const HWND hWnd)
         return false;
     }
 
-    // if (hWnd == GetShellWindow()) {
-    //     return false;
-    // }
-
     if (!IsWindowVisible(hWnd))
     {
         return false;
     }
 
-    if (GetAncestor(hWnd, GA_ROOT) != hWnd)
+    if (!isRootAltTabCandidate(hWnd))
     {
         return false;
     }
-
-    // LONG style = GetWindowLongW(hWnd, GWL_STYLE);
-    // if (style & WS_DISABLED) {
-    //     return TRUE;
-    // }
 
     LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
     if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW))
@@ -39,9 +46,9 @@ bool Util::isAltTabWindow(const HWND hWnd)
     }
 
     DWORD cloaked = FALSE;
-    HRESULT result =
+    const HRESULT result =
         DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
-    if (result == S_OK && cloaked == DWM_CLOAKED_SHELL)
+    if (result == S_OK && cloaked)
     {
         return false;
     }

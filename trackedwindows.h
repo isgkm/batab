@@ -27,6 +27,7 @@ struct WindowDetailsInternal
 };
 
 constexpr auto InternalListDataRole = Qt::UserRole + 1;
+constexpr auto SlotIndexRole = Qt::UserRole + 2;
 
 Q_DECLARE_METATYPE(WindowDetailsInternal);
 

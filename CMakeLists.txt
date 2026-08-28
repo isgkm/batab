@@ -18,6 +18,9 @@ qt_add_executable(batab
     winprocs.h winprocs.cpp
     trackedwindows.h trackedwindows.cpp
     util.h util.cpp
+    indexedicondelegate.cpp
+    indexedicondelegate.h
+
 )
 
 target_link_libraries(batab

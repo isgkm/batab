@@ -1,4 +1,6 @@
 #include "appswitcher.h"
+
+#include "indexedicondelegate.h"
 #include "trackedwindows.h"
 #include "ui_appswitcher.h"
 #include "util.h"
@@ -11,6 +13,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     ui->setupUi(this);
 
     this->ui->LV_openApps->setModel(this->listModel);
+    this->ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
 
     this->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
     this->setFixedSize(400, 500);
@@ -106,6 +109,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
             .hWnd = hWnd, .title = wDetails.title, .PID = wDetails.PID};
 
         item->setData(QVariant::fromValue(wdi), InternalListDataRole);
+        item->setData(trackedWindows->getWindowOrder(hWnd), SlotIndexRole);
 
         this->listModel->setItem(row, item);
         ++row;
