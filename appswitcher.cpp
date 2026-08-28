@@ -4,11 +4,16 @@
 #include "trackedwindows.h"
 #include "ui_appswitcher.h"
 #include "util.h"
+#include "winprocs.h"
+
+#include <qtimer.h>
+#include <windows.h>
 
 AppSwitcher::AppSwitcher(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::AppSwitcher)
     , listModel(new QStandardItemModel())
+    , selectionCommitTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
@@ -19,6 +24,11 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     this->setFixedSize(400, 500);
 
     qDebug() << "appswitcher ct";
+
+    selectionCommitTimer->setSingleShot(true);
+
+    QObject::connect(selectionCommitTimer, &QTimer::timeout, this,
+                     &AppSwitcher::activateSelectionAndHide);
 
     QObject::connect(qApp,
                      &QGuiApplication::applicationStateChanged,
@@ -100,7 +110,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
         item->setToolTip(wDetails.title);
 
         auto len = wDetails.title.length();
-        item->setText(len > 50 ? wDetails.title.left(50) + "..."
+        item->setText(len > 40 ? wDetails.title.left(40) + "..."
                                : wDetails.title);
 
         item->setIcon(wDetails.icon);
@@ -115,61 +125,251 @@ void AppSwitcher::showEvent(QShowEvent *event)
         ++row;
     }
 
+    HWND hwndForeground = GetForegroundWindow();
+    DWORD foregroundThreadID =
+        GetWindowThreadProcessId(hwndForeground, nullptr);
+    DWORD currentThreadId = GetCurrentThreadId();
+
+    AttachThreadInput(foregroundThreadID, currentThreadId, TRUE);
+    SetForegroundWindow(reinterpret_cast<HWND>(winId()));
+    SetFocus(reinterpret_cast<HWND>(winId()));
+    AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
+
+    qApp->installEventFilter(this);
+
     QWidget::showEvent(event);
 }
 
-void AppSwitcher::keyPressEvent(QKeyEvent *event)
+void AppSwitcher::hideEvent(QHideEvent *event)
 {
-    qDebug() << "press: " << event->key() << " with modifiers: " << event->modifiers();
+    selectionCommitTimer->stop();
+    qApp->removeEventFilter(this);
+    WinProcs::setSwitcherOpen(false);
+
+    QWidget::hideEvent(event);
 }
 
-void AppSwitcher::keyReleaseEvent(QKeyEvent *event)
+bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
 {
-    qDebug() << "release: " << event->key() << " with modifiers: " << event->modifiers();
+    if (watched == ui->LV_openApps->viewport() && event->type() == QEvent::Drop)
+    {
+        this->handleAppReorder(static_cast<QDropEvent *>(event));
+        return true;
+    }
 
-    auto key = event->key();
-    if (key == Qt::Key_Tab) {
-        qDebug() << "tab pressed ";
+    if (event->type() == QEvent::KeyPress)
+    {
+        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        const int key = keyEvent->key();
 
-        auto model = this->ui->LV_openApps->model();
-        int rowCount = model->rowCount();
-
-        if (rowCount > 0) {
-            int currentRow = this->ui->LV_openApps->currentIndex().row();
-
-            int nextRow = (currentRow + 1) % rowCount;
-
-            auto nextIdx = model->index(nextRow, 0);
-
-            this->ui->LV_openApps->setFocus();
-            this->ui->LV_openApps->setCurrentIndex(nextIdx);
-            this->ui->LV_openApps->selectionModel()->select(nextIdx,
-                                                            QItemSelectionModel::ClearAndSelect);
-
-             // Util::focusWindowAtIndex(nextIdx);
-        }
-    } else if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-        const int typedSlot = key - Qt::Key_1;
-
-        auto *model = ui->LV_openApps->model();
-
-        for (int row = 0; row < model->rowCount(); ++row)
+        if (key == Qt::Key_Escape)
         {
-            const QModelIndex index = model->index(row, 0);
-            if (index.data(SlotIndexRole).toInt() != typedSlot)
-                continue;
+            hide();
+            return true;
+        }
 
-            const QVariant data = index.data(InternalListDataRole);
-            if (data.isValid() && data.canConvert<WindowDetailsInternal>())
-            {
-                const auto idata = data.value<WindowDetailsInternal>();
+        if (!ui->PTE_appSearch->hasFocus() && key >= Qt::Key_1 &&
+            key <= Qt::Key_9)
+        {
+            focusAppAtSlot(key - Qt::Key_1);
+            return true;
+        }
 
-                qDebug() << "Clicked pid: " << idata.PID
-                         << " hwnd: " << idata.hWnd
-                         << " title: " << idata.title;
-
-                Util::focusWindowWithHWND(idata.hWnd);
-            }
+        if (!ui->PTE_appSearch->hasFocus() && key >= Qt::Key_A &&
+            key <= Qt::Key_Z)
+        {
+            ui->PTE_appSearch->setFocus();
+            QTextCursor cursor = ui->PTE_appSearch->textCursor();
+            cursor.movePosition(QTextCursor::End);
+            cursor.insertText(keyEvent->text());
+            ui->PTE_appSearch->setTextCursor(cursor);
+            return true;
         }
     }
+
+    return QWidget::eventFilter(watched, event);
 }
+
+void AppSwitcher::handleAppReorder(QDropEvent *event)
+{
+    const QModelIndex fromIndex = this->ui->LV_openApps->currentIndex();
+    if (!fromIndex.isValid())
+    {
+        return;
+    }
+
+    const QModelIndex targetIndex =
+        this->ui->LV_openApps->indexAt(event->position().toPoint());
+    int toRow = targetIndex.isValid() ? targetIndex.row()
+                                      : this->listModel->rowCount() - 1;
+    const int fromRow = fromIndex.row();
+
+    if (fromRow == toRow)
+    {
+        event->ignore();
+        return;
+    }
+
+    QList<QStandardItem *> movedRow = this->listModel->takeRow(fromRow);
+    if (toRow > fromRow)
+        --toRow;
+    this->listModel->insertRow(toRow, movedRow);
+
+    QVector<HWND> newOrder;
+    newOrder.reserve(this->listModel->rowCount());
+    for (int row = 0; row < this->listModel->rowCount(); ++row)
+    {
+        const auto data =
+            this->listModel->item(row)->data(InternalListDataRole);
+        newOrder.push_back(data.value<WindowDetailsInternal>().hWnd);
+    }
+    TrackedWindows::getInstance()->reorderSlots(newOrder);
+
+    for (int row = 0; row < this->listModel->rowCount(); ++row)
+        this->listModel->item(row)->setData(row, SlotIndexRole);
+
+    this->ui->LV_openApps->setCurrentIndex(listModel->index(toRow, 0));
+    event->accept();
+}
+
+void AppSwitcher::focusAppAtSlot(int slot)
+{
+    const auto *model = ui->LV_openApps->model();
+
+    for (int row = 0; row < model->rowCount(); ++row)
+    {
+        const QModelIndex index = model->index(row, 0);
+        if (index.data(SlotIndexRole).toInt() != slot)
+            continue;
+
+        const QVariant data = index.data(InternalListDataRole);
+        if (data.isValid() && data.canConvert<WindowDetailsInternal>())
+        {
+            const auto idata = data.value<WindowDetailsInternal>();
+
+            Util::focusWindowWithHWND(idata.hWnd);
+        }
+        return;
+    }
+}
+
+void AppSwitcher::cycleSelection()
+{
+    auto *model = this->ui->LV_openApps->model();
+
+    const int rowCount = model->rowCount();
+
+    qDebug() << "cycleSelection called, rowCount:" << rowCount
+             << "currentRow:" << ui->LV_openApps->currentIndex().row()
+             << "hasFocus:" << ui->LV_openApps->hasFocus();
+
+    if (rowCount == 0)
+    {
+        return;
+    }
+
+    const int currentRow = this->ui->LV_openApps->currentIndex().row();
+    const int nextRow = (currentRow + 1) % rowCount;
+
+    const QModelIndex nextIndex = model->index(nextRow, 0);
+
+    this->ui->LV_openApps->setFocus();
+    this->ui->LV_openApps->setCurrentIndex(nextIndex);
+    this->ui->LV_openApps->selectionModel()->select(
+        nextIndex, QItemSelectionModel::ClearAndSelect);
+
+    selectionCommitTimer->start(2000);
+}
+
+void AppSwitcher::cycleSelectionBackward()
+{
+    auto *model = this->ui->LV_openApps->model();
+
+    const int rowCount = model->rowCount();
+    if (rowCount == 0)
+        return;
+
+    const int currentRow = this->ui->LV_openApps->currentIndex().row();
+    const int prevRow = (currentRow - 1 + rowCount) % rowCount;
+
+    const QModelIndex prevIdx = model->index(prevRow, 0);
+
+    this->ui->LV_openApps->setFocus();
+    this->ui->LV_openApps->setCurrentIndex(prevIdx);
+    this->ui->LV_openApps->selectionModel()->select(
+        prevIdx, QItemSelectionModel::ClearAndSelect);
+
+    selectionCommitTimer->start(2000);
+}
+
+void AppSwitcher::activateSelectionAndHide()
+{
+    selectionCommitTimer->stop();
+
+    const QModelIndex idx = ui->LV_openApps->currentIndex();
+    if (idx.isValid())
+    {
+        const QVariant data = idx.data(InternalListDataRole);
+        if (data.isValid() && data.canConvert<WindowDetailsInternal>())
+        {
+            Util::focusWindowWithHWND(data.value<WindowDetailsInternal>().hWnd);
+        }
+    }
+
+    this->hide();
+}
+
+// bool AppSwitcher::event(QEvent *event)
+// {
+//     if (event->type() == QEvent::KeyPress)
+//     {
+//         auto *keyEvent = static_cast<QKeyEvent *>(event);
+//         if (keyEvent->key() == Qt::Key_Tab ||
+//             keyEvent->key() == Qt::Key_Backtab)
+//         {
+//             this->cycleSelection();
+//             return true;
+//         }
+//     }
+
+//     return QWidget::event(event);
+// }
+
+// void AppSwitcher::keyPressEvent(QKeyEvent *event)
+// {
+//     const int key = event->key();
+
+//     if (key == Qt::Key_Escape)
+//     {
+//         this->hide();
+//         return;
+//     }
+
+//     // if (key == Qt::Key_Tab)
+//     // {
+//     //     this->cycleSelection();
+//     //     return;
+//     // }
+
+//     if (!this->ui->PTE_appSearch->hasFocus() && key >= Qt::Key_1 &&
+//         key <= Qt::Key_9)
+//     {
+//         this->focusAppAtSlot(key - Qt::Key_1);
+//         return;
+//     }
+
+//     if (!this->ui->PTE_appSearch->hasFocus() && key >= Qt::Key_A &&
+//         key <= Qt::Key_Z)
+//     {
+//         this->ui->PTE_appSearch->setFocus();
+
+//         QTextCursor cursor = this->ui->PTE_appSearch->textCursor();
+//         cursor.movePosition(QTextCursor::End);
+//         cursor.insertText(event->text());
+//         this->ui->PTE_appSearch->setTextCursor(cursor);
+
+//         return;
+//     }
+
+//     QWidget::keyPressEvent(event);
+// }

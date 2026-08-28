@@ -75,6 +75,18 @@ void TrackedWindows::updateWindowTitle(HWND hWnd, const QString &newTitle)
     it->title = newTitle;
 }
 
+void TrackedWindows::reorderSlots(const QVector<HWND> &newOrder)
+{
+    this->m_slots = newOrder;
+    this->m_slotOf.clear();
+    this->m_freeSlots.clear();
+    for (int i = 0; i < this->m_slots.size(); ++i)
+    {
+        if (this->m_slots[i])
+            this->m_slotOf.insert(this->m_slots[i], i);
+    }
+}
+
 QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
 {
     out << reinterpret_cast<quintptr>(idetails.hWnd) << static_cast<quint32>(idetails.PID)

@@ -9,6 +9,6 @@ int main(int argc, char *argv[])
     QApplication::setQuitOnLastWindowClosed(false);
 
     Batab w;
-    w.show();
+    // w.show();
     return QCoreApplication::exec();
 }

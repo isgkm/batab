@@ -13,8 +13,18 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     painter->save();
 
-    opt.widget->style()->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt,
-                                       painter, opt.widget);
+    if (opt.state & QStyle::State_Selected)
+    {
+        painter->fillRect(opt.rect, opt.palette.highlight());
+        painter->setPen(opt.palette.highlightedText().color());
+    }
+    else
+    {
+        painter->setPen(opt.palette.text().color());
+    }
+
+    // opt.widget->style()->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt,
+    //                                    painter, opt.widget);
 
     constexpr int margin{6};
     QRect rect = opt.rect;

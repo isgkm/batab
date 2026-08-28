@@ -60,13 +60,9 @@ QIcon Util::getIconFromHWND(const HWND hWnd)
 {
     HICON hIcon = nullptr;
 
-    auto result = SendMessageTimeoutW(hWnd,
-                                      WM_GETICON,
-                                      ICON_BIG,
-                                      NULL,
-                                      SMTO_ABORTIFHUNG,
-                                      100,
-                                      reinterpret_cast<PDWORD_PTR>(&hIcon));
+    auto result =
+        SendMessageTimeoutW(hWnd, WM_GETICON, ICON_BIG, 0, SMTO_ABORTIFHUNG,
+                            100, reinterpret_cast<PDWORD_PTR>(&hIcon));
 
     if (result == 0) {
         qDebug() << "SendMessageTimeoutW failed";

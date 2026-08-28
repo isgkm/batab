@@ -42,6 +42,7 @@ public:
     void addWindow(HWND hWnd, const WindowDetails &windowDetails);
     bool removeWindow(const HWND hWnd);
     void updateWindowTitle(HWND hWnd, const QString &newTitle);
+    void reorderSlots(const QVector<HWND> &newOrder);
 
     [[nodiscard]] inline QHash<HWND, WindowDetails> getWindows() const { return openWindows; };
     [[nodiscard]] inline int getWindowOrder(HWND hWnd) const

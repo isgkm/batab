@@ -17,7 +17,7 @@ Batab::Batab(QWidget *parent)
     s_ui = this;
     appSwitcher = new AppSwitcher();
 
-    EnumWindows(WinProcs::enumWindowsProc, NULL);
+    EnumWindows(WinProcs::enumWindowsProc, 0);
 
     timer = new QTimer(this);
     timer->setSingleShot(true);

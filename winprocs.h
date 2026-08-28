@@ -3,6 +3,8 @@
 
 #include <windows.h>
 
+#include <atomic>
+
 class WinProcs final
 {
 public:
@@ -27,6 +29,8 @@ public:
                                                    DWORD idEventThread,
                                                    DWORD dwmsEventTime);
 
+    static void setSwitcherOpen(bool open);
+
     static void registerLLKHook();
     static void unregisterLLKHook();
     [[nodiscard]] static inline bool getIsLLKHooked() { return isLLKHooked; }
@@ -45,6 +49,7 @@ private:
 
     static bool isLLKHooked;
     static bool areWEHooksActive;
+    static std::atomic<bool> g_switcherOpen;
 };
 
 #endif // WINPROCS_H

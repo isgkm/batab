@@ -5,6 +5,7 @@
 #include "trackedwindows.h"
 #include "util.h"
 
+#include <qapplication.h>
 #include <QDebug>
 
 HHOOK WinProcs::hookLowLevelKeyboard{nullptr};
@@ -13,6 +14,8 @@ HWINEVENTHOOK WinProcs::hookWinAppNameChangeEvent{nullptr};
 
 bool WinProcs::isLLKHooked{};
 bool WinProcs::areWEHooksActive{};
+
+std::atomic<bool> WinProcs::g_switcherOpen{};
 
 BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
 {
@@ -41,27 +44,57 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
 LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
     if (nCode == HC_ACTION) {
-        KBDLLHOOKSTRUCT *p = (KBDLLHOOKSTRUCT *) lParam;
+        auto *p = reinterpret_cast<KBDLLHOOKSTRUCT *>(lParam);
+        const bool keyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
+        const bool keyUp = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP);
 
-        if (p->vkCode == VK_TAB) {
-            bool altDown = p->flags & LLKHF_ALTDOWN;
+        if (!g_switcherOpen && p->vkCode == VK_TAB &&
+            (p->flags & LLKHF_ALTDOWN) && wParam == WM_SYSKEYDOWN)
+        {
+            qDebug() << "alt+tab detected";
+            // keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+            keybd_event(VK_CONTROL, 0, 0, 0);
+            keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
 
-            if (altDown && wParam == WM_SYSKEYDOWN) {
-                qDebug() << "alt+tab detected";
+            g_switcherOpen = true;
 
-                keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
+            QMetaObject::invokeMethod(
+                qApp,
+                []() {
+                    auto *appSwitcher = Batab::getUI()->getAppSwitcher();
+                    if (appSwitcher)
+                    {
+                        appSwitcher->show();
+                        appSwitcher->activateWindow();
+                        appSwitcher->setFocus();
+                    }
+                },
+                Qt::QueuedConnection);
 
-                Batab* ui = Batab::getUI();
-                if(ui && ui->getAppSwitcher()){
-                    QMetaObject::invokeMethod(ui->getAppSwitcher(), [ui](){
-                        Batab::getUI()->getAppSwitcher()->show();
-                        Batab::getUI()->getAppSwitcher()->activateWindow();
-                        Batab::getUI()->getAppSwitcher()->setFocus();
-                    }, Qt::QueuedConnection);
-                }
+            return 1;
+        }
 
-                return 1;
-            }
+        if (g_switcherOpen && keyDown && p->vkCode == VK_TAB)
+        {
+            const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            bool invoked = QMetaObject::invokeMethod(
+                Batab::getUI()->getAppSwitcher(),
+                shiftDown ? "cycleSelectionBackward" : "cycleSelection",
+                Qt::QueuedConnection);
+
+            qDebug() << "invoke result: " << invoked;
+
+            return 1;
+        }
+
+        if (g_switcherOpen && keyUp && p->vkCode == VK_MENU)
+        {
+            g_switcherOpen = false;
+            QMetaObject::invokeMethod(Batab::getUI()->getAppSwitcher(),
+                                      "activateSelectionAndHide",
+                                      Qt::QueuedConnection);
+
+            return 1;
         }
     }
 
@@ -155,6 +188,11 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
     tracked->updateWindowTitle(hWnd, newTitle);  // see below
 }
 
+void WinProcs::setSwitcherOpen(bool open)
+{
+    g_switcherOpen = open;
+}
+
 void WinProcs::registerLLKHook()
 {
     if (isLLKHooked) {
@@ -199,7 +237,7 @@ void WinProcs::registerWEHooks()
 
     hookWinAppNameChangeEvent =
         SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE,
-                        nullptr, winAppNameChangeEventProc, 0, 0, NULL);
+                        nullptr, winAppNameChangeEventProc, 0, 0, 0);
 
     if (hookWinAppLifecycleEvent != nullptr &&
         hookWinAppNameChangeEvent != nullptr)
