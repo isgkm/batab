@@ -29,9 +29,6 @@ protected:
     void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
 
-    // bool event(QEvent *event) override;
-    // void keyPressEvent(QKeyEvent *event) override;
-
 private:
     Ui::AppSwitcher *ui;
     QStandardItemModel *listModel;

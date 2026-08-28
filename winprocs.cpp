@@ -52,7 +52,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
             (p->flags & LLKHF_ALTDOWN) && wParam == WM_SYSKEYDOWN)
         {
             qDebug() << "alt+tab detected";
-            // keybd_event(VK_MENU, 0, KEYEVENTF_KEYUP, 0);
             keybd_event(VK_CONTROL, 0, 0, 0);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
 
