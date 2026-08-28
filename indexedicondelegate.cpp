@@ -23,24 +23,23 @@ void IndexedIconDelegate::paint(QPainter *painter,
                         ? opt.palette.highlightedText().color()
                         : opt.palette.text().color());
 
-    // 1. number
     const int slot = index.data(SlotIndexRole).toInt();
-    const QString number = QString::number(slot + 1) + " - ";
+    const QString number = QString::number(slot + 1) + " -";
     const int numberWidth = opt.fontMetrics.horizontalAdvance(number);
-    QRect numberRect(rect.left() + margin, rect.top(), numberWidth,
-                     rect.height());
+    const QRect numberRect(rect.left() + margin, rect.top(), numberWidth,
+                           rect.height());
     painter->drawText(numberRect, Qt::AlignVCenter | Qt::AlignLeft, number);
 
-    // 2. icon
-    QRect iconRect(
+    const QRect iconRect(
         numberRect.right() + margin,
         rect.top() + (rect.height() - opt.decorationSize.height()) / 2,
         opt.decorationSize.width(), opt.decorationSize.height());
     opt.icon.paint(painter, iconRect);
 
-    // 3. title
-    QRect textRect(iconRect.right() + margin, rect.top(),
-                   rect.width() - (iconRect.right() + margin), rect.height());
+    const QRect textRect(iconRect.right() + margin, rect.top(),
+                         rect.width() - (iconRect.right() + margin),
+                         rect.height());
+
     painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, opt.text);
 
     painter->restore();

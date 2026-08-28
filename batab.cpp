@@ -27,7 +27,7 @@ Batab::Batab(QWidget *parent)
                      &AppSwitcher::showUIAfterTimerCompleted);
 
     WinProcs::registerLLKHook();
-    WinProcs::registerWEHook();
+    WinProcs::registerWEHooks();
 
     createActions();
     createTrayIcon();
@@ -44,7 +44,7 @@ Batab::Batab(QWidget *parent)
 Batab::~Batab()
 {
     WinProcs::unregisterLLKHook();
-    WinProcs::unregisterWEHook();
+    WinProcs::unregisterWEHooks();
 
     s_ui = nullptr;
     delete appSwitcher;

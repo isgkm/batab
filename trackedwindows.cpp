@@ -64,6 +64,17 @@ bool TrackedWindows::removeWindow(const HWND hWnd)
     return true;
 }
 
+void TrackedWindows::updateWindowTitle(HWND hWnd, const QString &newTitle)
+{
+    auto it = openWindows.find(hWnd);
+    if (it == openWindows.end())
+    {
+        return;
+    }
+
+    it->title = newTitle;
+}
+
 QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
 {
     out << reinterpret_cast<quintptr>(idetails.hWnd) << static_cast<quint32>(idetails.PID)

@@ -8,10 +8,11 @@
 #include <QDebug>
 
 HHOOK WinProcs::hookLowLevelKeyboard{nullptr};
-HWINEVENTHOOK WinProcs::hookWindowsEvent{nullptr};
+HWINEVENTHOOK WinProcs::hookWinAppLifecycleEvent{nullptr};
+HWINEVENTHOOK WinProcs::hookWinAppNameChangeEvent{nullptr};
 
 bool WinProcs::isLLKHooked{};
-bool WinProcs::isWEHooked{};
+bool WinProcs::areWEHooksActive{};
 
 BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
 {
@@ -67,7 +68,7 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
     return CallNextHookEx(hookLowLevelKeyboard, nCode, wParam, lParam);
 }
 
-void CALLBACK WinProcs::winEventProc(HWINEVENTHOOK hWinEventHook,
+void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
                                      DWORD event,
                                      HWND hWnd,
                                      LONG idObject,
@@ -81,6 +82,7 @@ void CALLBACK WinProcs::winEventProc(HWINEVENTHOOK hWinEventHook,
 
     if (event == EVENT_OBJECT_DESTROY) {
         TrackedWindows::getInstance()->removeWindow(hWnd);
+        return;
     }
 
     if (!IsWindow(hWnd)) {
@@ -116,6 +118,43 @@ void CALLBACK WinProcs::winEventProc(HWINEVENTHOOK hWinEventHook,
     }
 }
 
+void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
+                                                  DWORD event, HWND hWnd,
+                                                  LONG idObject, LONG idChild,
+                                                  DWORD idEventThread,
+                                                  DWORD dwmsEventTime)
+{
+    if (hWnd == NULL || idObject != OBJID_WINDOW || idChild != CHILDID_SELF)
+    {
+        return;
+    }
+
+    if (!Util::isAltTabWindow(hWnd))
+    {
+        return;
+    }
+
+    const int len = GetWindowTextLengthW(hWnd);
+    QString newTitle;
+    if (len > 0)
+    {
+        QVector<wchar_t> buf(len + 1);
+        GetWindowTextW(hWnd, buf.data(), len + 1);
+        newTitle = QString::fromWCharArray(buf.data());
+    }
+
+    auto *tracked = TrackedWindows::getInstance();
+    const auto windows = tracked->getWindows();
+    const auto it = windows.constFind(hWnd);
+    if (it != windows.constEnd() && it.value().title == newTitle)
+    {
+        return;
+    }
+
+    qDebug() << "Title actually changed:" << hWnd << newTitle;
+    tracked->updateWindowTitle(hWnd, newTitle);  // see below
+}
+
 void WinProcs::registerLLKHook()
 {
     if (isLLKHooked) {
@@ -146,35 +185,45 @@ void WinProcs::unregisterLLKHook()
     }
 }
 
-void WinProcs::registerWEHook()
+void WinProcs::registerWEHooks()
 {
-    if (isWEHooked) {
+    if (areWEHooksActive)
+    {
         return;
     }
 
-    hookWindowsEvent = SetWinEventHook(EVENT_OBJECT_CREATE,
-                                       EVENT_OBJECT_UNCLOAKED,
-                                       nullptr,
-                                       winEventProc,
-                                       0,
-                                       0,
-                                       WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+    hookWinAppLifecycleEvent =
+        SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_UNCLOAKED, nullptr,
+                        winAppLifecycleEventProc, 0, 0,
+                        WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 
-    if (hookWindowsEvent != nullptr) {
-        isWEHooked = true;
+    hookWinAppNameChangeEvent =
+        SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE,
+                        nullptr, winAppNameChangeEventProc, 0, 0, NULL);
+
+    if (hookWinAppLifecycleEvent != nullptr &&
+        hookWinAppNameChangeEvent != nullptr)
+    {
+        areWEHooksActive = true;
     }
 }
 
-void WinProcs::unregisterWEHook()
+void WinProcs::unregisterWEHooks()
 {
-    if (!isWEHooked) {
+    if (!areWEHooksActive)
+    {
         return;
     }
 
-    auto status = UnhookWinEvent(hookWindowsEvent);
+    auto statusWinAppLifecycleEvent = UnhookWinEvent(hookWinAppLifecycleEvent);
+    auto statusWinAppNameChangeEvent =
+        UnhookWinEvent(hookWinAppNameChangeEvent);
 
-    if (status) {
-        hookWindowsEvent = nullptr;
-        isWEHooked = false;
+    if (statusWinAppLifecycleEvent && statusWinAppNameChangeEvent)
+    {
+        hookWinAppLifecycleEvent = nullptr;
+        hookWinAppNameChangeEvent = nullptr;
+
+        areWEHooksActive = false;
     }
 }
