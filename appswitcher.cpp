@@ -149,18 +149,27 @@ void AppSwitcher::keyReleaseEvent(QKeyEvent *event)
              // Util::focusWindowAtIndex(nextIdx);
         }
     } else if (key >= Qt::Key_1 && key <= Qt::Key_9) {
-        key -= Qt::Key_0;
-        auto data = this->ui->LV_openApps->model()
-                        ->index(key == Qt::Key_0 ? 10 : key - 1, 0)
-                        .data(InternalListDataRole);
+        const int typedSlot = key - Qt::Key_1;
 
-        if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
-            auto idata = data.value<WindowDetailsInternal>();
+        auto *model = ui->LV_openApps->model();
 
-            qDebug() << "Clicked pid: " << idata.PID << " hwnd: " << idata.hWnd
-            << " title: " << idata.title;
+        for (int row = 0; row < model->rowCount(); ++row)
+        {
+            const QModelIndex index = model->index(row, 0);
+            if (index.data(SlotIndexRole).toInt() != typedSlot)
+                continue;
 
-            Util::focusWindowWithHWND(idata.hWnd);
+            const QVariant data = index.data(InternalListDataRole);
+            if (data.isValid() && data.canConvert<WindowDetailsInternal>())
+            {
+                const auto idata = data.value<WindowDetailsInternal>();
+
+                qDebug() << "Clicked pid: " << idata.PID
+                         << " hwnd: " << idata.hWnd
+                         << " title: " << idata.title;
+
+                Util::focusWindowWithHWND(idata.hWnd);
+            }
         }
     }
 }
