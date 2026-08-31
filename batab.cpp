@@ -21,7 +21,7 @@ Batab::Batab(QWidget *parent)
     EnumWindows(WinProcs::enumWindowsProc, 0);
 
     m_timer->setSingleShot(true);
-    QObject::connect(this->m_timer, &QTimer::timeout, this->m_appSwitcher,
+    QObject::connect(m_timer, &QTimer::timeout, m_appSwitcher,
                      &AppSwitcher::showUIAfterTimerCompleted);
 
     WinProcs::registerLLKHook();

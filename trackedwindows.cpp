@@ -49,22 +49,22 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
 
 bool TrackedWindows::removeWindow(HWND hWnd)
 {
-    if (!this->m_openWindows.contains(hWnd))
+    if (!m_openWindows.contains(hWnd))
     {
         return false;
     }
 
     qDebug() << "Removing: " << hWnd << " from list.";
 
-    this->m_openWindows.remove(hWnd);
+    m_openWindows.remove(hWnd);
 
-    const int slot = this->m_slotOf.value(hWnd, -1);
-    this->m_slotOf.remove(hWnd);
+    const int slot = m_slotOf.value(hWnd, -1);
+    m_slotOf.remove(hWnd);
 
     if (slot >= 0)
     {
-        this->m_slots.replace(slot, nullptr);
-        this->m_freeSlots.insert(slot, true);
+        m_slots.replace(slot, nullptr);
+        m_freeSlots.insert(slot, true);
     }
 
     return true;
