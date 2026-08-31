@@ -8,22 +8,23 @@
 #include <qapplication.h>
 #include <QDebug>
 
-HHOOK WinProcs::hookLowLevelKeyboard{nullptr};
-HWINEVENTHOOK WinProcs::hookWinAppLifecycleEvent{nullptr};
-HWINEVENTHOOK WinProcs::hookWinAppNameChangeEvent{nullptr};
+HHOOK WinProcs::s_hookLowLevelKeyboard{nullptr};
+HWINEVENTHOOK WinProcs::s_hookWinAppLifecycleEvent{nullptr};
+HWINEVENTHOOK WinProcs::s_hookWinAppNameChangeEvent{nullptr};
 
-bool WinProcs::isLLKHooked{};
-bool WinProcs::areWEHooksActive{};
+bool WinProcs::s_isLLKHooked{};
+bool WinProcs::s_areWEHooksActive{};
 
-std::atomic<bool> WinProcs::g_switcherOpen{};
+std::atomic<bool> WinProcs::s_switcherOpen{};
 
 BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
 {
-    int length = GetWindowTextLengthW(hWnd);
+    const int length = GetWindowTextLengthW(hWnd);
     std::wstring windowTitle;
     windowTitle.resize(length);
 
-    GetWindowTextW(hWnd, windowTitle.data(), windowTitle.size() + 1);
+    GetWindowTextW(hWnd, windowTitle.data(),
+                   static_cast<int>(windowTitle.size() + 1));
 
     if (!Util::isAltTabWindow(hWnd))
     {
@@ -33,29 +34,31 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
     DWORD processId = 0;
     GetWindowThreadProcessId(hWnd, &processId);
 
-    TrackedWindows::getInstance()->addWindow(hWnd,
-                                             {.title = QString::fromStdWString(windowTitle),
-                                              .PID = processId,
-                                              .icon = Util::getIconFromHWND(hWnd)});
+    TrackedWindows::getInstance()->addWindow(
+        hWnd, {.title = QString::fromStdWString(windowTitle),
+               .processId = processId,
+               .icon = Util::getIconFromHWND(hWnd)});
 
     return TRUE;
 }
 
-LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
+LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
+                                                LPARAM lParam)
 {
-    if (nCode == HC_ACTION) {
-        auto *p = reinterpret_cast<KBDLLHOOKSTRUCT *>(lParam);
+    if (nCode == HC_ACTION)
+    {
+        auto *keyboardHook = Util::toHandle<KBDLLHOOKSTRUCT *>(lParam);
         const bool keyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
         const bool keyUp = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP);
 
-        if (!g_switcherOpen && p->vkCode == VK_TAB &&
-            (p->flags & LLKHF_ALTDOWN) && wParam == WM_SYSKEYDOWN)
+        if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB &&
+            (keyboardHook->flags & LLKHF_ALTDOWN) && wParam == WM_SYSKEYDOWN)
         {
             qDebug() << "alt+tab detected";
             keybd_event(VK_CONTROL, 0, 0, 0);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
 
-            g_switcherOpen = true;
+            s_switcherOpen = true;
 
             QMetaObject::invokeMethod(
                 qApp,
@@ -73,10 +76,10 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
             return 1;
         }
 
-        if (g_switcherOpen && keyDown && p->vkCode == VK_TAB)
+        if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB)
         {
             const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-            bool invoked = QMetaObject::invokeMethod(
+            const bool invoked = QMetaObject::invokeMethod(
                 Batab::getUI()->getAppSwitcher(),
                 shiftDown ? "cycleSelectionBackward" : "cycleSelection",
                 Qt::QueuedConnection);
@@ -86,9 +89,9 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
             return 1;
         }
 
-        if (g_switcherOpen && keyUp && p->vkCode == VK_MENU)
+        if (s_switcherOpen && keyUp && keyboardHook->vkCode == VK_MENU)
         {
-            g_switcherOpen = false;
+            s_switcherOpen = false;
             QMetaObject::invokeMethod(Batab::getUI()->getAppSwitcher(),
                                       "activateSelectionAndHide",
                                       Qt::QueuedConnection);
@@ -97,7 +100,7 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM
         }
     }
 
-    return CallNextHookEx(hookLowLevelKeyboard, nCode, wParam, lParam);
+    return CallNextHookEx(s_hookLowLevelKeyboard, nCode, wParam, lParam);
 }
 
 void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
@@ -108,7 +111,8 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
                                      DWORD idEventThread,
                                      DWORD dwmsEventTime)
 {
-    if (hWnd == NULL || idObject != OBJID_WINDOW || idChild != CHILDID_SELF) {
+    if (hWnd == nullptr || idObject != OBJID_WINDOW || idChild != CHILDID_SELF)
+    {
         return;
     }
 
@@ -131,16 +135,20 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
     }
 
     if (event == EVENT_OBJECT_SHOW) {
-        char title[512];
-        GetWindowTextA(hWnd, title, sizeof(title));
+        // char title[512];
+        constexpr int maxTitleLength{512};
+        std::vector<wchar_t> titleBuffer(maxTitleLength);
+        const auto len =
+            GetWindowTextW(hWnd, titleBuffer.data(), maxTitleLength);
+        const QString title = QString::fromWCharArray(titleBuffer.data(), len);
 
         DWORD processId = 0;
         GetWindowThreadProcessId(hWnd, &processId);
 
-        TrackedWindows::getInstance()->addWindow(hWnd,
-                                                 {.title = title,
-                                                  .PID = processId,
-                                                  .icon = Util::getIconFromHWND(hWnd)});
+        TrackedWindows::getInstance()->addWindow(
+            hWnd, {.title = title,
+                   .processId = processId,
+                   .icon = Util::getIconFromHWND(hWnd)});
 
         // for (const auto &[hWnd, windowDetails] :
         //      TrackedWindows::getInstance()->getWindows().asKeyValueRange()) {
@@ -156,7 +164,7 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
                                                   DWORD idEventThread,
                                                   DWORD dwmsEventTime)
 {
-    if (hWnd == NULL || idObject != OBJID_WINDOW || idChild != CHILDID_SELF)
+    if (hWnd == nullptr || idObject != OBJID_WINDOW || idChild != CHILDID_SELF)
     {
         return;
     }
@@ -187,80 +195,82 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
     tracked->updateWindowTitle(hWnd, newTitle);  // see below
 }
 
-void WinProcs::setSwitcherOpen(bool open)
-{
-    g_switcherOpen = open;
-}
+// void WinProcs::setSwitcherOpen(bool open)
+// {
+//     g_switcherOpen = open;
+// }
 
 void WinProcs::registerLLKHook()
 {
-    if (isLLKHooked) {
+    if (s_isLLKHooked)
+    {
         return;
     }
 
-    hookLowLevelKeyboard = SetWindowsHookExW(WH_KEYBOARD_LL,
-                                             lowLevelKeyboardProc,
-                                             GetModuleHandle(NULL),
-                                             0);
+    s_hookLowLevelKeyboard = SetWindowsHookExW(
+        WH_KEYBOARD_LL, lowLevelKeyboardProc, GetModuleHandle(nullptr), 0);
 
-    if (hookLowLevelKeyboard != nullptr) {
-        isLLKHooked = true;
+    if (s_hookLowLevelKeyboard != nullptr)
+    {
+        s_isLLKHooked = true;
     }
 }
 
 void WinProcs::unregisterLLKHook()
 {
-    if (!isLLKHooked) {
+    if (!s_isLLKHooked)
+    {
         return;
     }
 
-    auto status = UnhookWindowsHookEx(hookLowLevelKeyboard);
+    auto status = UnhookWindowsHookEx(s_hookLowLevelKeyboard);
 
     if (status) {
-        hookLowLevelKeyboard = nullptr;
-        isLLKHooked = false;
+        s_hookLowLevelKeyboard = nullptr;
+        s_isLLKHooked = false;
     }
 }
 
 void WinProcs::registerWEHooks()
 {
-    if (areWEHooksActive)
+    if (s_areWEHooksActive)
     {
         return;
     }
 
-    hookWinAppLifecycleEvent =
+    s_hookWinAppLifecycleEvent =
         SetWinEventHook(EVENT_OBJECT_CREATE, EVENT_OBJECT_UNCLOAKED, nullptr,
                         winAppLifecycleEventProc, 0, 0,
                         WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 
-    hookWinAppNameChangeEvent =
+    s_hookWinAppNameChangeEvent =
         SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE,
                         nullptr, winAppNameChangeEventProc, 0, 0, 0);
 
-    if (hookWinAppLifecycleEvent != nullptr &&
-        hookWinAppNameChangeEvent != nullptr)
+    if (s_hookWinAppLifecycleEvent != nullptr &&
+        s_hookWinAppNameChangeEvent != nullptr)
     {
-        areWEHooksActive = true;
+        s_areWEHooksActive = true;
     }
 }
 
 void WinProcs::unregisterWEHooks()
 {
-    if (!areWEHooksActive)
+    if (!s_areWEHooksActive)
     {
         return;
     }
 
-    auto statusWinAppLifecycleEvent = UnhookWinEvent(hookWinAppLifecycleEvent);
+    auto statusWinAppLifecycleEvent =
+        UnhookWinEvent(s_hookWinAppLifecycleEvent);
     auto statusWinAppNameChangeEvent =
-        UnhookWinEvent(hookWinAppNameChangeEvent);
+        UnhookWinEvent(s_hookWinAppNameChangeEvent);
 
     if (statusWinAppLifecycleEvent && statusWinAppNameChangeEvent)
     {
-        hookWinAppLifecycleEvent = nullptr;
-        hookWinAppNameChangeEvent = nullptr;
+        s_hookWinAppLifecycleEvent = nullptr;
+        s_hookWinAppNameChangeEvent = nullptr;
 
-        areWEHooksActive = false;
+        s_areWEHooksActive = false;
     }
 }

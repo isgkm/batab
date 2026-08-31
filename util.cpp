@@ -1,12 +1,14 @@
 #include "util.h"
 
+#include "constants.h"
 #include "trackedwindows.h"
 
 #include <dwmapi.h>
 #include <QDebug>
 #include <windows.h>
 
-bool isRootAltTabCandidate(const HWND hWnd)
+namespace {
+bool isRootAltTabCandidate(HWND hWnd)
 {
     HWND hWndWalk = GetAncestor(hWnd, GA_ROOTOWNER);
     HWND hWndTry{};
@@ -14,15 +16,18 @@ bool isRootAltTabCandidate(const HWND hWnd)
     while ((hWndTry = GetLastActivePopup(hWndWalk)) != hWndWalk)
     {
         if (IsWindowVisible(hWndTry))
+        {
             break;
+        }
 
         hWndWalk = hWndTry;
     }
 
     return hWndWalk == hWnd;
 }
+}  // namespace
 
-bool Util::isAltTabWindow(const HWND hWnd)
+bool Util::isAltTabWindow(HWND hWnd)
 {
     if (GetWindowTextLengthW(hWnd) == 0)
     {
@@ -39,7 +44,7 @@ bool Util::isAltTabWindow(const HWND hWnd)
         return false;
     }
 
-    LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
+    const LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
     if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW))
     {
         return false;
@@ -48,6 +53,7 @@ bool Util::isAltTabWindow(const HWND hWnd)
     DWORD cloaked = FALSE;
     const HRESULT result =
         DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
+
     if (result == S_OK && cloaked)
     {
         return false;
@@ -56,28 +62,29 @@ bool Util::isAltTabWindow(const HWND hWnd)
     return true;
 }
 
-QIcon Util::getIconFromHWND(const HWND hWnd)
+QIcon Util::getIconFromHWND(HWND hWnd)
 {
-    HICON hIcon = nullptr;
+    HICON hIcon{};
 
-    auto result =
-        SendMessageTimeoutW(hWnd, WM_GETICON, ICON_BIG, 0, SMTO_ABORTIFHUNG,
-                            100, reinterpret_cast<PDWORD_PTR>(&hIcon));
+    auto result = SendMessageTimeoutW(
+        hWnd, WM_GETICON, ICON_BIG, 0, SMTO_ABORTIFHUNG, 100,
+        Util::reinterpretPointer<HICON, PDWORD_PTR>(
+            hIcon));  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast): Win32 API requirement
 
     if (result == 0) {
         qDebug() << "SendMessageTimeoutW failed";
     }
 
     if (!hIcon) {
-        hIcon = reinterpret_cast<HICON>(GetClassLongPtr(hWnd, GCLP_HICON));
+        hIcon = Util::toHandle<HICON>(GetClassLongPtr(hWnd, GCLP_HICON));
     }
 
     if (!hIcon) {
-        hIcon = LoadIconW(NULL, IDI_APPLICATION);
+        hIcon = LoadIconW(nullptr, IDI_APPLICATION);
     }
 
     if (!hIcon) {
-        return QIcon();
+        return {};
     }
 
     QIcon qIcon(QPixmap::fromImage(QImage::fromHICON(hIcon)));
@@ -87,9 +94,10 @@ QIcon Util::getIconFromHWND(const HWND hWnd)
     return qIcon;
 }
 
-void Util::focusWindowWithHWND(const HWND hWnd)
+void Util::focusWindowWithHWND(HWND hWnd)
 {
-    if (hWnd == NULL || !IsWindow(hWnd)) {
+    if (hWnd == nullptr || !IsWindow(hWnd))
+    {
         return;
     }
 
@@ -104,7 +112,7 @@ void Util::focusWindowWithHWND(const HWND hWnd)
 
 void Util::focusWindowAtIndex(const QModelIndex &listIndex)
 {
-    auto data = listIndex.data(InternalListDataRole);
+    auto data = listIndex.data(Constants::INTERNAL_LIST_DATA_ROLE);
     if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
         auto idata = data.value<WindowDetailsInternal>();
 

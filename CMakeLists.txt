@@ -7,6 +7,9 @@ qt_standard_project_setup()
 
 set(CMAKE_AUTORCC ON)
 
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 qt_add_executable(batab
     WIN32 MACOSX_BUNDLE
     main.cpp
@@ -20,8 +23,35 @@ qt_add_executable(batab
     util.h util.cpp
     indexedicondelegate.cpp
     indexedicondelegate.h
-
+    constants.h
 )
+
+# Configure compiler warnings
+if (MSVC)
+    message(STATUS "Using MSVC")
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        /W4
+        /WX
+        /permissive-
+    )
+else ()
+    message(STATUS "GCC/CLANG/MinGW used")
+    target_compile_options(${PROJECT_NAME} PUBLIC
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Werror
+
+        -Wno-unused-parameter
+    )
+
+    # Extra Clang warnings
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        target_compile_options(${LIBRARY_PROJECT} PUBLIC
+            -Wrange-loop-analysis
+        )
+    endif()
+endif ()
 
 target_link_libraries(batab
     PRIVATE

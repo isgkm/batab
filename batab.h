@@ -9,7 +9,7 @@
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class Batab;
-}
+}  // namespace Ui
 QT_END_NAMESPACE
 
 class Batab final : public QMainWindow
@@ -20,10 +20,15 @@ public:
     explicit Batab(QWidget *parent = nullptr);
     ~Batab() override;
 
-    [[nodiscard]] inline static Batab *getUI() { return s_ui; }
-    [[nodiscard]] inline AppSwitcher *getAppSwitcher()
+    Q_DISABLE_COPY_MOVE(Batab)
+
+    [[nodiscard]] static Batab *getUI()
     {
-        return appSwitcher;
+        return s_ui;
+    }
+    [[nodiscard]] AppSwitcher *getAppSwitcher()
+    {
+        return m_appSwitcher;
     }
 
 signals:
@@ -34,19 +39,19 @@ protected:
     void createTrayIcon();
 
 private:
-    Ui::Batab *ui;
+    Ui::Batab *m_ui;
     static Batab *s_ui;
 
-    QSystemTrayIcon *trayIcon;
-    QMenu *trayIconMenu;
+    QSystemTrayIcon *m_trayIcon{};
+    QMenu *m_trayIconMenu{};
 
-    AppSwitcher *appSwitcher;
+    AppSwitcher *m_appSwitcher{};
 
-    QAction *minimizeAction;
-    QAction *maximizeAction;
-    QAction *restoreAction;
-    QAction *quitAction;
+    QAction *m_minimizeAction{};
+    QAction *m_maximizeAction{};
+    QAction *m_restoreAction{};
+    QAction *m_quitAction{};
 
-    QTimer *timer;
+    QTimer *m_timer{};
 };
 #endif // BATAB_H

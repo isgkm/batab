@@ -1,5 +1,6 @@
 #include "appswitcher.h"
 
+#include "constants.h"
 #include "indexedicondelegate.h"
 #include "trackedwindows.h"
 #include "ui_appswitcher.h"
@@ -11,43 +12,51 @@
 
 AppSwitcher::AppSwitcher(QWidget *parent)
     : QWidget(parent)
-    , ui(new Ui::AppSwitcher)
-    , listModel(new QStandardItemModel())
-    , selectionCommitTimer(new QTimer(this))
+    , m_ui(new Ui::AppSwitcher)
+    , m_listModel(new QStandardItemModel())
+    , m_selectionCommitTimer(new QTimer(this))
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
 
-    this->ui->LV_openApps->setModel(this->listModel);
-    this->ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
+    this->m_ui->LV_openApps->setModel(this->m_listModel);
+    this->m_ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
 
     this->setWindowFlags(Qt::Tool | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
-    this->setFixedSize(400, 500);
+    constexpr int width = 400;
+    constexpr int height = 500;
+    this->setFixedSize(width, height);
 
     qDebug() << "appswitcher ct";
 
-    selectionCommitTimer->setSingleShot(true);
+    this->m_selectionCommitTimer->setSingleShot(true);
 
-    QObject::connect(selectionCommitTimer, &QTimer::timeout, this,
+    QObject::connect(this->m_ui->LV_openApps->selectionModel(),
+                     &QItemSelectionModel::currentChanged, this, [this]() {
+                         qDebug() << "focus changed, resetting timer.";
+                         this->m_selectionCommitTimer->start(
+                             Constants::SELECTION_COMMIT_TIMEOUT_MS);
+                     });
+
+    QObject::connect(m_selectionCommitTimer, &QTimer::timeout, this,
                      &AppSwitcher::activateSelectionAndHide);
 
-    QObject::connect(qApp,
-                     &QGuiApplication::applicationStateChanged,
-                     this,
-                     [=](Qt::ApplicationState state) {
-                         if (state == Qt::ApplicationInactive) {
+    QObject::connect(qApp, &QGuiApplication::applicationStateChanged, this,
+                     [this](Qt::ApplicationState state) {
+                         if (state == Qt::ApplicationInactive)
+                         {
                              this->hide();
-                             this->ui->PTE_appSearch->clear();
+                             this->m_ui->PTE_appSearch->clear();
                          }
                      });
 
-    QObject::connect(this->ui->LV_openApps, &QListView::clicked, &Util::focusWindowAtIndex);
+    QObject::connect(this->m_ui->LV_openApps, &QListView::clicked, &Util::focusWindowAtIndex);
 
-    QObject::connect(this->ui->PTE_appSearch,
+    QObject::connect(this->m_ui->PTE_appSearch,
                      &QPlainTextEdit::textChanged,
                      this,
                      &AppSwitcher::onTextChanged);
 
-    QObject::connect(this->ui->LV_openApps->model(),
+    QObject::connect(this->m_ui->LV_openApps->model(),
                      &QStandardItemModel::rowsMoved,
                      this,
                      [](const QModelIndex &sourceParent,
@@ -59,7 +68,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
 AppSwitcher::~AppSwitcher()
 {
-    delete ui;
+    delete m_ui;
 }
 
 void AppSwitcher::focusAppSearch()
@@ -74,35 +83,39 @@ void AppSwitcher::showUIAfterTimerCompleted()
 
 void AppSwitcher::onTextChanged()
 {
-    auto searchQuery = this->ui->PTE_appSearch->toPlainText();
+    // auto searchQuery = this->m_ui->PTE_appSearch->toPlainText();
 
     // this->ui->LV_openApps->filte
 }
 
 void AppSwitcher::showEvent(QShowEvent *event)
 {
-    this->listModel->clear();
+    this->m_listModel->clear();
 
-    auto trackedWindows = TrackedWindows::getInstance();
+    auto *trackedWindows = TrackedWindows::getInstance();
     const auto ordered = trackedWindows->getOrderedWindows();
     const auto windows = trackedWindows->getWindows();
 
-    this->listModel->setRowCount(trackedWindows->getWindowCount());
-    // qDebug() << trackedWindows->getOrderedWindows();
+    this->m_listModel->setRowCount(
+        static_cast<int>(trackedWindows->getWindowCount()));
 
     int row = 0;
     for (HWND hWnd : ordered)
     {
         if (!hWnd)
+        {
             continue;
+        }
 
         const auto it = windows.constFind(hWnd);
         if (it == windows.constEnd())
+        {
             continue;
+        }
 
         const WindowDetails &wDetails = it.value();
 
-        QStandardItem *item = new QStandardItem();
+        auto *item = new QStandardItem();
 
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled);
         item->setEditable(false);
@@ -110,28 +123,36 @@ void AppSwitcher::showEvent(QShowEvent *event)
         item->setToolTip(wDetails.title);
 
         auto len = wDetails.title.length();
-        item->setText(len > 40 ? wDetails.title.left(40) + "..."
-                               : wDetails.title);
+        item->setText(
+            len > Constants::MAX_TITLE_DISPLAY_LENGTH
+                ? wDetails.title.left(Constants::MAX_TITLE_DISPLAY_LENGTH) +
+                      "..."
+                : wDetails.title);
 
         item->setIcon(wDetails.icon);
 
-        WindowDetailsInternal wdi{
-            .hWnd = hWnd, .title = wDetails.title, .PID = wDetails.PID};
+        const WindowDetailsInternal wdi{.hWnd = hWnd,
+                                        .title = wDetails.title,
+                                        .processId = wDetails.processId};
 
-        item->setData(QVariant::fromValue(wdi), InternalListDataRole);
-        item->setData(trackedWindows->getWindowOrder(hWnd), SlotIndexRole);
+        item->setData(QVariant::fromValue(wdi),
+                      Constants::INTERNAL_LIST_DATA_ROLE);
+        item->setData(trackedWindows->getWindowOrder(hWnd),
+                      Constants::SLOT_INDEX_ROLE);
 
-        this->listModel->setItem(row, item);
+        this->m_listModel->setItem(row, item);
         ++row;
     }
 
     HWND hwndForeground = GetForegroundWindow();
-    DWORD foregroundThreadID =
+    const DWORD foregroundThreadID =
         GetWindowThreadProcessId(hwndForeground, nullptr);
-    DWORD currentThreadId = GetCurrentThreadId();
+    const DWORD currentThreadId = GetCurrentThreadId();
 
     AttachThreadInput(foregroundThreadID, currentThreadId, TRUE);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - winId() returns a HWND on windows
     SetForegroundWindow(reinterpret_cast<HWND>(winId()));
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - winId() returns a HWND on windows
     SetFocus(reinterpret_cast<HWND>(winId()));
     AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
 
@@ -142,7 +163,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
 void AppSwitcher::hideEvent(QHideEvent *event)
 {
-    selectionCommitTimer->stop();
+    m_selectionCommitTimer->stop();
     qApp->removeEventFilter(this);
     WinProcs::setSwitcherOpen(false);
 
@@ -151,15 +172,15 @@ void AppSwitcher::hideEvent(QHideEvent *event)
 
 bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
 {
-    if (watched == ui->LV_openApps->viewport() && event->type() == QEvent::Drop)
+    if (watched == m_ui->LV_openApps->viewport() && event->type() == QEvent::Drop)
     {
-        this->handleAppReorder(static_cast<QDropEvent *>(event));
+        this->handleAppReorder(dynamic_cast<QDropEvent *>(event));
         return true;
     }
 
     if (event->type() == QEvent::KeyPress)
     {
-        auto *keyEvent = static_cast<QKeyEvent *>(event);
+        auto *keyEvent = dynamic_cast<QKeyEvent *>(event);
         const int key = keyEvent->key();
 
         if (key == Qt::Key_Escape)
@@ -168,21 +189,21 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
 
-        if (!ui->PTE_appSearch->hasFocus() && key >= Qt::Key_1 &&
+        if (!m_ui->PTE_appSearch->hasFocus() && key >= Qt::Key_1 &&
             key <= Qt::Key_9)
         {
             focusAppAtSlot(key - Qt::Key_1);
             return true;
         }
 
-        if (!ui->PTE_appSearch->hasFocus() && key >= Qt::Key_A &&
+        if (!m_ui->PTE_appSearch->hasFocus() && key >= Qt::Key_A &&
             key <= Qt::Key_Z)
         {
-            ui->PTE_appSearch->setFocus();
-            QTextCursor cursor = ui->PTE_appSearch->textCursor();
+            m_ui->PTE_appSearch->setFocus();
+            QTextCursor cursor = m_ui->PTE_appSearch->textCursor();
             cursor.movePosition(QTextCursor::End);
             cursor.insertText(keyEvent->text());
-            ui->PTE_appSearch->setTextCursor(cursor);
+            m_ui->PTE_appSearch->setTextCursor(cursor);
             return true;
         }
     }
@@ -192,16 +213,16 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
 
 void AppSwitcher::handleAppReorder(QDropEvent *event)
 {
-    const QModelIndex fromIndex = this->ui->LV_openApps->currentIndex();
+    const QModelIndex fromIndex = this->m_ui->LV_openApps->currentIndex();
     if (!fromIndex.isValid())
     {
         return;
     }
 
     const QModelIndex targetIndex =
-        this->ui->LV_openApps->indexAt(event->position().toPoint());
+        this->m_ui->LV_openApps->indexAt(event->position().toPoint());
     int toRow = targetIndex.isValid() ? targetIndex.row()
-                                      : this->listModel->rowCount() - 1;
+                                      : this->m_listModel->rowCount() - 1;
     const int fromRow = fromIndex.row();
 
     if (fromRow == toRow)
@@ -210,39 +231,45 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
         return;
     }
 
-    QList<QStandardItem *> movedRow = this->listModel->takeRow(fromRow);
+    const QList<QStandardItem *> movedRow = this->m_listModel->takeRow(fromRow);
     if (toRow > fromRow)
+    {
         --toRow;
-    this->listModel->insertRow(toRow, movedRow);
+    }
+    this->m_listModel->insertRow(toRow, movedRow);
 
     QVector<HWND> newOrder;
-    newOrder.reserve(this->listModel->rowCount());
-    for (int row = 0; row < this->listModel->rowCount(); ++row)
+    newOrder.reserve(this->m_listModel->rowCount());
+    for (int row = 0; row < this->m_listModel->rowCount(); ++row)
     {
-        const auto data =
-            this->listModel->item(row)->data(InternalListDataRole);
+        const auto data = this->m_listModel->item(row)->data(
+            Constants::INTERNAL_LIST_DATA_ROLE);
         newOrder.push_back(data.value<WindowDetailsInternal>().hWnd);
     }
     TrackedWindows::getInstance()->reorderSlots(newOrder);
 
-    for (int row = 0; row < this->listModel->rowCount(); ++row)
-        this->listModel->item(row)->setData(row, SlotIndexRole);
+    for (int row = 0; row < this->m_listModel->rowCount(); ++row)
+    {
+        this->m_listModel->item(row)->setData(row, Constants::SLOT_INDEX_ROLE);
+    }
 
-    this->ui->LV_openApps->setCurrentIndex(listModel->index(toRow, 0));
+    this->m_ui->LV_openApps->setCurrentIndex(m_listModel->index(toRow, 0));
     event->accept();
 }
 
 void AppSwitcher::focusAppAtSlot(int slot)
 {
-    const auto *model = ui->LV_openApps->model();
+    const auto *model = m_ui->LV_openApps->model();
 
     for (int row = 0; row < model->rowCount(); ++row)
     {
         const QModelIndex index = model->index(row, 0);
-        if (index.data(SlotIndexRole).toInt() != slot)
+        if (index.data(Constants::SLOT_INDEX_ROLE).toInt() != slot)
+        {
             continue;
+        }
 
-        const QVariant data = index.data(InternalListDataRole);
+        const QVariant data = index.data(Constants::INTERNAL_LIST_DATA_ROLE);
         if (data.isValid() && data.canConvert<WindowDetailsInternal>())
         {
             const auto idata = data.value<WindowDetailsInternal>();
@@ -255,61 +282,63 @@ void AppSwitcher::focusAppAtSlot(int slot)
 
 void AppSwitcher::cycleSelection()
 {
-    auto *model = this->ui->LV_openApps->model();
+    auto *model = this->m_ui->LV_openApps->model();
 
     const int rowCount = model->rowCount();
 
     qDebug() << "cycleSelection called, rowCount:" << rowCount
-             << "currentRow:" << ui->LV_openApps->currentIndex().row()
-             << "hasFocus:" << ui->LV_openApps->hasFocus();
+             << "currentRow:" << m_ui->LV_openApps->currentIndex().row()
+             << "hasFocus:" << m_ui->LV_openApps->hasFocus();
 
     if (rowCount == 0)
     {
         return;
     }
 
-    const int currentRow = this->ui->LV_openApps->currentIndex().row();
+    const int currentRow = this->m_ui->LV_openApps->currentIndex().row();
     const int nextRow = (currentRow + 1) % rowCount;
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
 
-    this->ui->LV_openApps->setFocus();
-    this->ui->LV_openApps->setCurrentIndex(nextIndex);
-    this->ui->LV_openApps->selectionModel()->select(
+    this->m_ui->LV_openApps->setFocus();
+    this->m_ui->LV_openApps->setCurrentIndex(nextIndex);
+    this->m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);
 
-    selectionCommitTimer->start(2000);
+    // selectionCommitTimer->start(Constants::SelectionCommitTimeoutMs);
 }
 
 void AppSwitcher::cycleSelectionBackward()
 {
-    auto *model = this->ui->LV_openApps->model();
+    auto *model = this->m_ui->LV_openApps->model();
 
     const int rowCount = model->rowCount();
     if (rowCount == 0)
+    {
         return;
+    }
 
-    const int currentRow = this->ui->LV_openApps->currentIndex().row();
+    const int currentRow = this->m_ui->LV_openApps->currentIndex().row();
     const int prevRow = (currentRow - 1 + rowCount) % rowCount;
 
     const QModelIndex prevIdx = model->index(prevRow, 0);
 
-    this->ui->LV_openApps->setFocus();
-    this->ui->LV_openApps->setCurrentIndex(prevIdx);
-    this->ui->LV_openApps->selectionModel()->select(
+    this->m_ui->LV_openApps->setFocus();
+    this->m_ui->LV_openApps->setCurrentIndex(prevIdx);
+    this->m_ui->LV_openApps->selectionModel()->select(
         prevIdx, QItemSelectionModel::ClearAndSelect);
 
-    selectionCommitTimer->start(2000);
+    // selectionCommitTimer->start(Constants::SelectionCommitTimeoutMs);
 }
 
 void AppSwitcher::activateSelectionAndHide()
 {
-    selectionCommitTimer->stop();
+    m_selectionCommitTimer->stop();
 
-    const QModelIndex idx = ui->LV_openApps->currentIndex();
+    const QModelIndex idx = m_ui->LV_openApps->currentIndex();
     if (idx.isValid())
     {
-        const QVariant data = idx.data(InternalListDataRole);
+        const QVariant data = idx.data(Constants::INTERNAL_LIST_DATA_ROLE);
         if (data.isValid() && data.canConvert<WindowDetailsInternal>())
         {
             Util::focusWindowWithHWND(data.value<WindowDetailsInternal>().hWnd);

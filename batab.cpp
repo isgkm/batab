@@ -11,19 +11,17 @@ Batab *Batab::s_ui = nullptr;
 
 Batab::Batab(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::Batab)
+    , m_ui(new Ui::Batab)
+    , m_appSwitcher(new AppSwitcher())
+    , m_timer(new QTimer(this))
 {
-    ui->setupUi(this);
+    m_ui->setupUi(this);
     s_ui = this;
-    appSwitcher = new AppSwitcher();
 
     EnumWindows(WinProcs::enumWindowsProc, 0);
 
-    timer = new QTimer(this);
-    timer->setSingleShot(true);
-    QObject::connect(this->timer,
-                     &QTimer::timeout,
-                     this->appSwitcher,
+    m_timer->setSingleShot(true);
+    QObject::connect(this->m_timer, &QTimer::timeout, this->m_appSwitcher,
                      &AppSwitcher::showUIAfterTimerCompleted);
 
     WinProcs::registerLLKHook();
@@ -32,13 +30,13 @@ Batab::Batab(QWidget *parent)
     createActions();
     createTrayIcon();
 
-    QIcon icon(":/assets/icon.png");
-    trayIcon->setIcon(icon);
+    const QIcon icon(":/assets/icon.png");
+    m_trayIcon->setIcon(icon);
     setWindowIcon(icon);
 
-    trayIcon->setToolTip("Batab");
+    m_trayIcon->setToolTip("Batab");
 
-    trayIcon->show();
+    m_trayIcon->show();
 }
 
 Batab::~Batab()
@@ -47,34 +45,35 @@ Batab::~Batab()
     WinProcs::unregisterWEHooks();
 
     s_ui = nullptr;
-    delete appSwitcher;
-    delete ui;
+    delete m_appSwitcher;
+    delete m_ui;
 }
 
 void Batab::createActions()
 {
-    minimizeAction = new QAction(tr("&Minimize"), this);
-    connect(minimizeAction, &QAction::triggered, this, &QWidget::hide);
+    m_minimizeAction = new QAction(tr("&Minimize"), this);
+    connect(m_minimizeAction, &QAction::triggered, this, &QWidget::hide);
 
-    maximizeAction = new QAction(tr("&Maximize"), this);
-    connect(maximizeAction, &QAction::triggered, this, &QWidget::showMaximized);
+    m_maximizeAction = new QAction(tr("&Maximize"), this);
+    connect(m_maximizeAction, &QAction::triggered, this,
+            &QWidget::showMaximized);
 
-    restoreAction = new QAction(tr("&Restore"), this);
-    connect(restoreAction, &QAction::triggered, this, &QWidget::showNormal);
+    m_restoreAction = new QAction(tr("&Restore"), this);
+    connect(m_restoreAction, &QAction::triggered, this, &QWidget::showNormal);
 
-    quitAction = new QAction(tr("&Quit"), this);
-    connect(quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
+    m_quitAction = new QAction(tr("&Quit"), this);
+    connect(m_quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
 }
 
 void Batab::createTrayIcon()
 {
-    trayIconMenu = new QMenu(this);
-    trayIconMenu->addAction(minimizeAction);
-    trayIconMenu->addAction(maximizeAction);
-    trayIconMenu->addAction(restoreAction);
-    trayIconMenu->addSeparator();
-    trayIconMenu->addAction(quitAction);
+    m_trayIconMenu = new QMenu(this);
+    m_trayIconMenu->addAction(m_minimizeAction);
+    m_trayIconMenu->addAction(m_maximizeAction);
+    m_trayIconMenu->addAction(m_restoreAction);
+    m_trayIconMenu->addSeparator();
+    m_trayIconMenu->addAction(m_quitAction);
 
-    trayIcon = new QSystemTrayIcon(this);
-    trayIcon->setContextMenu(trayIconMenu);
+    m_trayIcon = new QSystemTrayIcon(this);
+    m_trayIcon->setContextMenu(m_trayIconMenu);
 }

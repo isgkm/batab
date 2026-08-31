@@ -29,27 +29,33 @@ public:
                                                    DWORD idEventThread,
                                                    DWORD dwmsEventTime);
 
-    static void setSwitcherOpen(bool open);
+    static void setSwitcherOpen(bool open)
+    {
+        s_switcherOpen = open;
+    }
 
     static void registerLLKHook();
     static void unregisterLLKHook();
-    [[nodiscard]] static inline bool getIsLLKHooked() { return isLLKHooked; }
+    [[nodiscard]] static bool getIsLLKHooked()
+    {
+        return s_isLLKHooked;
+    }
 
     static void registerWEHooks();
     static void unregisterWEHooks();
-    [[nodiscard]] static inline bool getIsWEHooked()
+    [[nodiscard]] static bool getIsWEHooked()
     {
-        return areWEHooksActive;
+        return s_areWEHooksActive;
     }
 
 private:
-    static HHOOK hookLowLevelKeyboard;
-    static HWINEVENTHOOK hookWinAppLifecycleEvent;
-    static HWINEVENTHOOK hookWinAppNameChangeEvent;
+    static HHOOK s_hookLowLevelKeyboard;
+    static HWINEVENTHOOK s_hookWinAppLifecycleEvent;
+    static HWINEVENTHOOK s_hookWinAppNameChangeEvent;
 
-    static bool isLLKHooked;
-    static bool areWEHooksActive;
-    static std::atomic<bool> g_switcherOpen;
+    static bool s_isLLKHooked;
+    static bool s_areWEHooksActive;
+    static std::atomic<bool> s_switcherOpen;
 };
 
 #endif // WINPROCS_H

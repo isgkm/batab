@@ -1,6 +1,6 @@
 #include "indexedicondelegate.h"
 
-#include "trackedwindows.h"
+#include "constants.h"
 
 #include <QPainter>
 
@@ -24,13 +24,13 @@ void IndexedIconDelegate::paint(QPainter *painter,
     }
 
     constexpr int margin{6};
-    QRect rect = opt.rect;
+    const QRect rect = opt.rect;
 
     painter->setPen(opt.state & QStyle::State_Selected
                         ? opt.palette.highlightedText().color()
                         : opt.palette.text().color());
 
-    const int slot = index.data(SlotIndexRole).toInt();
+    const int slot = index.data(Constants::SLOT_INDEX_ROLE).toInt();
     const QString number = QString::number(slot + 1) + " -";
     const int numberWidth = opt.fontMetrics.horizontalAdvance(number);
     const QRect numberRect(rect.left() + margin, rect.top(), numberWidth,
@@ -39,7 +39,7 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     const QRect iconRect(
         numberRect.right() + margin,
-        rect.top() + (rect.height() - opt.decorationSize.height()) / 2,
+        rect.top() + ((rect.height() - opt.decorationSize.height()) / 2),
         opt.decorationSize.width(), opt.decorationSize.height());
     opt.icon.paint(painter, iconRect);
 
@@ -56,8 +56,7 @@ QSize IndexedIconDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const
 {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setWidth(size.width() + option.fontMetrics.horizontalAdvance("00.") +
-                  6);
+    size.setWidth(size.width() + option.fontMetrics.horizontalAdvance("00."));
 
     return size;
 }

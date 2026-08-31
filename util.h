@@ -3,17 +3,35 @@
 
 #include <QIcon>
 #include <QModelIndex>
+#include <windows.h>
 
-class Util final
+#include <type_traits>
+
+namespace Util {
+
+[[nodiscard]] bool isAltTabWindow(HWND hWnd);
+
+[[nodiscard]] QIcon getIconFromHWND(HWND hWnd);
+void focusWindowWithHWND(HWND hWnd);
+void focusWindowAtIndex(const QModelIndex &listIndex);
+
+template <class T>
+concept PtrLike = std::is_pointer_v<T>;
+
+template <PtrLike From, PtrLike To>
+[[nodiscard]] To reinterpretPointer(From value)
 {
-public:
-    Util() = default;
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast): Win32 API requires reinterpreting between pointer types (e.g. &hIcon -> PDWORD_PTR)
+    return reinterpret_cast<To>(value);
+}
 
-    [[nodiscard]] static bool isAltTabWindow(const HWND hWnd);
+template <typename T>
+[[nodiscard]] T toHandle(ULONG_PTR value)
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr)
+    return reinterpret_cast<T>(value);
+}
 
-    [[nodiscard]] static QIcon getIconFromHWND(const HWND hWnd);
-    static void focusWindowWithHWND(const HWND hWnd);
-    static void focusWindowAtIndex(const QModelIndex &listIndex);
-};
+};  // namespace Util
 
 #endif // UTIL_H

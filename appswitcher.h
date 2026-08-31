@@ -6,7 +6,7 @@
 
 namespace Ui {
 class AppSwitcher;
-}
+}  // namespace Ui
 
 class AppSwitcher final : public QWidget
 {
@@ -14,7 +14,11 @@ class AppSwitcher final : public QWidget
 
 public:
     explicit AppSwitcher(QWidget *parent = nullptr);
-    ~AppSwitcher();
+    ~AppSwitcher() override;
+
+    Q_DISABLE_COPY_MOVE(AppSwitcher)
+
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
     void focusAppSearch();
 
@@ -25,14 +29,13 @@ private slots:
     void onTextChanged();
 
 protected:
-    bool eventFilter(QObject *watched, QEvent *event) override;
     void showEvent(QShowEvent *event) override;
     void hideEvent(QHideEvent *event) override;
 
 private:
-    Ui::AppSwitcher *ui;
-    QStandardItemModel *listModel;
-    QTimer *selectionCommitTimer;
+    Ui::AppSwitcher *m_ui;
+    QStandardItemModel *m_listModel;
+    QTimer *m_selectionCommitTimer;
 
     void handleAppReorder(QDropEvent *event);
     void focusAppAtSlot(int slot);

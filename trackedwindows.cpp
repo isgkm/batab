@@ -2,62 +2,68 @@
 
 #include <QDebug>
 
-TrackedWindows *TrackedWindows::instance = nullptr;
-QMutex TrackedWindows::mutex;
+TrackedWindows *TrackedWindows::s_instance = nullptr;
+QMutex TrackedWindows::s_mutex;
 
 TrackedWindows *TrackedWindows::getInstance()
 {
-    QMutexLocker<QMutex> lock(&mutex);
+    const QMutexLocker<QMutex> lock(&s_mutex);
 
-    if (instance == nullptr) {
-        instance = new TrackedWindows();
+    if (s_instance == nullptr)
+    {
+        s_instance = new TrackedWindows();
     }
 
-    return instance;
+    return s_instance;
 }
 
 void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
 {
-    if (this->openWindows.contains(hWnd))
+    if (m_openWindows.contains(hWnd))
+    {
         return;
+    }
 
     qDebug() << "Adding: " << hWnd << " [" << windowDetails.title
              << "] to list.";
 
-    this->openWindows.insert(hWnd, windowDetails);
+    m_openWindows.insert(hWnd, windowDetails);
 
     int slot{};
-    if (!this->m_freeSlots.empty())
+    if (!m_freeSlots.empty())
     {
         slot = m_freeSlots.firstKey();
-        this->m_freeSlots.remove(slot);
-        this->m_slots[slot] = hWnd;
+        m_freeSlots.remove(slot);
+        // TODO CHECK: m_slots[slot] = hWnd;
+        m_slots.replace(slot, hWnd);
     }
     else
     {
-        slot = this->m_slots.size();
-        this->m_slots.push_back(hWnd);
+        slot = static_cast<int>(m_slots.size());
+        m_slots.push_back(hWnd);
     }
 
-    this->m_slotOf.insert(hWnd, slot);
-    // this->openWindowOrders.emplaceBack(hWnd);
+    m_slotOf.insert(hWnd, slot);
+    // openWindowOrders.emplaceBack(hWnd);
 }
 
-bool TrackedWindows::removeWindow(const HWND hWnd)
+bool TrackedWindows::removeWindow(HWND hWnd)
 {
-    if (!this->openWindows.contains(hWnd))
+    if (!this->m_openWindows.contains(hWnd))
+    {
         return false;
+    }
 
     qDebug() << "Removing: " << hWnd << " from list.";
 
-    this->openWindows.remove(hWnd);
+    this->m_openWindows.remove(hWnd);
 
     const int slot = this->m_slotOf.value(hWnd, -1);
     this->m_slotOf.remove(hWnd);
 
     if (slot >= 0)
     {
-        this->m_slots[slot] = nullptr;
+        this->m_slots.replace(slot, nullptr);
         this->m_freeSlots.insert(slot, true);
     }
 
@@ -66,8 +72,8 @@ bool TrackedWindows::removeWindow(const HWND hWnd)
 
 void TrackedWindows::updateWindowTitle(HWND hWnd, const QString &newTitle)
 {
-    auto it = openWindows.find(hWnd);
-    if (it == openWindows.end())
+    auto it = m_openWindows.find(hWnd);
+    if (it == m_openWindows.end())
     {
         return;
     }
@@ -77,32 +83,35 @@ void TrackedWindows::updateWindowTitle(HWND hWnd, const QString &newTitle)
 
 void TrackedWindows::reorderSlots(const QVector<HWND> &newOrder)
 {
-    this->m_slots = newOrder;
-    this->m_slotOf.clear();
-    this->m_freeSlots.clear();
-    for (int i = 0; i < this->m_slots.size(); ++i)
+    m_slots = newOrder;
+    m_slotOf.clear();
+    m_freeSlots.clear();
+    for (int i = 0; i < m_slots.size(); ++i)
     {
-        if (this->m_slots[i])
-            this->m_slotOf.insert(this->m_slots[i], i);
+        auto *val = m_slots.value(i);
+        if (val)
+        {
+            m_slotOf.insert(val, i);
+        }
     }
 }
 
-QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
-{
-    out << reinterpret_cast<quintptr>(idetails.hWnd) << static_cast<quint32>(idetails.PID)
-        << idetails.title;
-    return out;
-}
+// QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
+// {
+//     out << reinterpret_cast<quintptr>(idetails.hWnd) << static_cast<quint32>(idetails.PID)
+//         << idetails.title;
+//     return out;
+// }
 
-QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
-{
-    quintptr hwndVal;
-    quint32 pidVal;
+// QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
+// {
+//     quintptr hwndVal;
+//     quint32 pidVal;
 
-    in >> hwndVal >> pidVal >> idetails.title;
+//     in >> hwndVal >> pidVal >> idetails.title;
 
-    idetails.hWnd = reinterpret_cast<HWND>(hwndVal);
-    idetails.PID = static_cast<DWORD>(pidVal);
+//     idetails.hWnd = reinterpret_cast<HWND>(hwndVal);
+//     idetails.PID = static_cast<DWORD>(pidVal);
 
-    return in;
-}
+//     return in;
+// }
