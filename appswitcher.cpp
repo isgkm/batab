@@ -27,8 +27,6 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     constexpr int height = 500;
     setFixedSize(width, height);
 
-    qDebug() << "appswitcher ct";
-
     m_selectionCommitTimer->setSingleShot(true);
 
     QObject::connect(m_ui->LV_openApps->selectionModel(),
@@ -99,7 +97,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
     m_listModel->setRowCount(static_cast<int>(ordered.size()));
 
-    int row = 0;
+    int row{0};
     for (HWND hWnd : ordered)
     {
         if (!hWnd)
@@ -152,10 +150,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
     const DWORD currentThreadId = GetCurrentThreadId();
 
     AttachThreadInput(foregroundThreadID, currentThreadId, TRUE);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - winId() returns a HWND on windows
-    SetForegroundWindow(reinterpret_cast<HWND>(winId()));
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - winId() returns a HWND on windows
-    SetFocus(reinterpret_cast<HWND>(winId()));
+    SetForegroundWindow(Util::toHandle<HWND>(winId()));
+    SetFocus(Util::toHandle<HWND>(winId()));
     AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
 
     qApp->installEventFilter(this);
