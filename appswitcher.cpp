@@ -13,7 +13,7 @@
 AppSwitcher::AppSwitcher(QWidget *parent)
     : QWidget(parent)
     , m_ui(new Ui::AppSwitcher)
-    , m_listModel(new QStandardItemModel())
+    , m_listModel(new QStandardItemModel(this))
     , m_selectionCommitTimer(new QTimer(this))
 {
     m_ui->setupUi(this);
@@ -43,10 +43,13 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     QObject::connect(qApp, &QGuiApplication::applicationStateChanged, this,
                      [this](Qt::ApplicationState state) {
-                         if (state == Qt::ApplicationInactive)
+                         if (state == Qt::ApplicationInactive && isVisible())
                          {
                              hide();
-                             m_ui->PTE_appSearch->clear();
+                             if (!m_ui->PTE_appSearch->toPlainText().isEmpty())
+                             {
+                                 m_ui->PTE_appSearch->clear();
+                             }
                          }
                      });
 
@@ -94,8 +97,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
     const auto ordered = trackedWindows->getOrderedWindows();
     const auto windows = trackedWindows->getWindows();
 
-    m_listModel->setRowCount(
-        static_cast<int>(trackedWindows->getWindowCount()));
+    m_listModel->setRowCount(static_cast<int>(ordered.size()));
 
     int row = 0;
     for (HWND hWnd : ordered)
@@ -141,6 +143,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
         m_listModel->setItem(row, item);
         ++row;
     }
+
+    m_listModel->setRowCount(row);
 
     HWND hwndForeground = GetForegroundWindow();
     const DWORD foregroundThreadID =

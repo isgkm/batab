@@ -2,8 +2,8 @@
 
 #include <QDebug>
 
-TrackedWindows *TrackedWindows::s_instance = nullptr;
-QMutex TrackedWindows::s_mutex;
+TrackedWindows *TrackedWindows::s_instance{};
+QMutex TrackedWindows::s_mutex{};
 
 TrackedWindows *TrackedWindows::getInstance()
 {

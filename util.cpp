@@ -87,9 +87,15 @@ QIcon Util::getIconFromHWND(HWND hWnd)
         return {};
     }
 
-    QIcon qIcon(QPixmap::fromImage(QImage::fromHICON(hIcon)));
+    HICON hIconOwned = CopyIcon(hIcon);
+    if (!hIconOwned)
+    {
+        return {};
+    }
 
-    DestroyIcon(hIcon);
+    QIcon qIcon(QPixmap::fromImage(QImage::fromHICON(hIconOwned)));
+
+    DestroyIcon(hIconOwned);
 
     return qIcon;
 }
