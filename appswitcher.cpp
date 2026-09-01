@@ -20,6 +20,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     m_ui->LV_openApps->setModel(m_listModel);
     m_ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
+    m_ui->LV_openApps->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
@@ -117,16 +118,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled);
         item->setEditable(false);
-        // wDetails.title = wDetails.title;
         item->setToolTip(wDetails.title);
-
-        auto len = wDetails.title.length();
-        item->setText(
-            len > Constants::MAX_TITLE_DISPLAY_LENGTH
-                ? wDetails.title.left(Constants::MAX_TITLE_DISPLAY_LENGTH) +
-                      "..."
-                : wDetails.title);
-
+        item->setText(wDetails.title);
         item->setIcon(wDetails.icon);
 
         const WindowDetailsInternal wdi{.hWnd = hWnd,

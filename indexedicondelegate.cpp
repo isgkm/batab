@@ -13,14 +13,13 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     painter->save();
 
+    painter->setPen(opt.state & QStyle::State_Selected
+                        ? opt.palette.highlightedText().color()
+                        : opt.palette.text().color());
+
     if (opt.state & QStyle::State_Selected)
     {
         painter->fillRect(opt.rect, opt.palette.highlight());
-        painter->setPen(opt.palette.highlightedText().color());
-    }
-    else
-    {
-        painter->setPen(opt.palette.text().color());
     }
 
     constexpr int margin{6};
@@ -47,7 +46,10 @@ void IndexedIconDelegate::paint(QPainter *painter,
                          rect.width() - (iconRect.right() + margin),
                          rect.height());
 
-    painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, opt.text);
+    const QString elidedText =
+        opt.fontMetrics.elidedText(opt.text, Qt::ElideRight, textRect.width());
+
+    painter->drawText(textRect, Qt::AlignVCenter | Qt::AlignLeft, elidedText);
 
     painter->restore();
 }
@@ -56,7 +58,7 @@ QSize IndexedIconDelegate::sizeHint(const QStyleOptionViewItem &option,
                                     const QModelIndex &index) const
 {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
-    size.setWidth(size.width() + option.fontMetrics.horizontalAdvance("00."));
+    size.setWidth(option.rect.width());
 
     return size;
 }

@@ -5,7 +5,6 @@
 
 namespace Constants {
 constexpr int SELECTION_COMMIT_TIMEOUT_MS = 1000;
-constexpr int MAX_TITLE_DISPLAY_LENGTH = 20;
 
 constexpr auto INTERNAL_LIST_DATA_ROLE = Qt::UserRole + 1;
 constexpr auto SLOT_INDEX_ROLE = Qt::UserRole + 2;
