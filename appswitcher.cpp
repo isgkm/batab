@@ -32,13 +32,6 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     m_selectionCommitTimer->setSingleShot(true);
 
-    QObject::connect(m_ui->LV_openApps->selectionModel(),
-                     &QItemSelectionModel::currentChanged, this, [this]() {
-                         qDebug() << "focus changed, resetting timer.";
-                         m_selectionCommitTimer->start(
-                             Constants::SELECTION_COMMIT_TIMEOUT_MS);
-                     });
-
     QObject::connect(m_selectionCommitTimer, &QTimer::timeout, this,
                      &AppSwitcher::activateSelectionAndHide);
 
@@ -47,10 +40,6 @@ AppSwitcher::AppSwitcher(QWidget *parent)
                          if (state == Qt::ApplicationInactive && isVisible())
                          {
                              hide();
-                             if (!m_ui->PTE_appSearch->toPlainText().isEmpty())
-                             {
-                                 m_ui->PTE_appSearch->clear();
-                             }
                          }
                      });
 
@@ -59,23 +48,11 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     QObject::connect(m_ui->PTE_appSearch, &QPlainTextEdit::textChanged, this,
                      &AppSwitcher::onTextChanged);
-
-    QObject::connect(
-        m_ui->LV_openApps->model(), &QStandardItemModel::rowsMoved, this,
-        [](const QModelIndex &sourceParent, int sourceStart, int sourceEnd,
-           const QModelIndex &destinationParent, int destinationRow) {
-            qDebug() << "parents: " << sourceParent;
-        });
 }
 
 AppSwitcher::~AppSwitcher()
 {
     delete m_ui;
-}
-
-void AppSwitcher::focusAppSearch()
-{
-    // ui->PTE_appSearch->setFocus();
 }
 
 void AppSwitcher::showUIAfterTimerCompleted()
@@ -85,9 +62,31 @@ void AppSwitcher::showUIAfterTimerCompleted()
 
 void AppSwitcher::onTextChanged()
 {
-    // auto searchQuery = m_ui->PTE_appSearch->toPlainText();
+    const auto searchQuery = m_ui->PTE_appSearch->toPlainText().trimmed();
 
-    // ui->LV_openApps->filte
+    for (int row = 0; row < m_listModel->rowCount(); ++row)
+    {
+        const QStandardItem *item = m_listModel->item(row);
+        if (!item)
+        {
+            continue;
+        }
+
+        const bool matches =
+            searchQuery.isEmpty() ||
+            item->text().contains(searchQuery, Qt::CaseInsensitive);
+
+        m_ui->LV_openApps->setRowHidden(row, !matches);
+    }
+
+    for (int row = 0; row < m_listModel->rowCount(); ++row)
+    {
+        if (!m_ui->LV_openApps->isRowHidden(row))
+        {
+            m_ui->LV_openApps->setCurrentIndex(m_listModel->index(row, 0));
+            break;
+        }
+    }
 }
 
 void AppSwitcher::showEvent(QShowEvent *event)
@@ -150,6 +149,10 @@ void AppSwitcher::showEvent(QShowEvent *event)
     SetFocus(Util::toHandle<HWND>(winId()));
     AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
 
+    ///
+    m_ui->LV_openApps->setFocus();
+    ///
+
     qApp->installEventFilter(this);
 
     QWidget::showEvent(event);
@@ -160,6 +163,11 @@ void AppSwitcher::hideEvent(QHideEvent *event)
     m_selectionCommitTimer->stop();
     qApp->removeEventFilter(this);
     WinProcs::setSwitcherOpen(false);
+
+    if (!m_ui->PTE_appSearch->toPlainText().isEmpty())
+    {
+        m_ui->PTE_appSearch->clear();
+    }
 
     QWidget::hideEvent(event);
 }

@@ -79,12 +79,10 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
         if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB)
         {
             const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-            const bool invoked = QMetaObject::invokeMethod(
+            QMetaObject::invokeMethod(
                 Batab::getUI()->getAppSwitcher(),
                 shiftDown ? "cycleSelectionBackward" : "cycleSelection",
                 Qt::QueuedConnection);
-
-            qDebug() << "invoke result: " << invoked;
 
             return 1;
         }

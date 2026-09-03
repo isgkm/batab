@@ -20,8 +20,6 @@ public:
 
     bool eventFilter(QObject *watched, QEvent *event) override;
 
-    void focusAppSearch();
-
 public slots:
     void showUIAfterTimerCompleted();
 
