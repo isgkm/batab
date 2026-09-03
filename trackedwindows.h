@@ -22,8 +22,10 @@ struct WindowDetailsInternal
     QString title{};
     DWORD processId{};
 
-    // friend QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails);
-    // friend QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails);
+    friend QDataStream &operator<<(QDataStream &out,
+                                   const WindowDetailsInternal &idetails);
+    friend QDataStream &operator>>(QDataStream &in,
+                                   WindowDetailsInternal &idetails);
 };
 
 Q_DECLARE_METATYPE(WindowDetailsInternal);

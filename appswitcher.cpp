@@ -21,6 +21,8 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     m_ui->LV_openApps->setModel(m_listModel);
     m_ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
     m_ui->LV_openApps->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    m_ui->LV_openApps->setDragDropMode(QAbstractItemView::DragDrop);
+    m_ui->LV_openApps->setDefaultDropAction(Qt::MoveAction);
 
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
@@ -116,7 +118,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
         auto *item = new QStandardItem();
 
-        item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled);
+        item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
+                       Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
         item->setEditable(false);
         item->setToolTip(wDetails.title);
         item->setText(wDetails.title);
@@ -216,6 +219,17 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
         targetIndex.isValid() ? targetIndex.row() : m_listModel->rowCount() - 1;
     const int fromRow = fromIndex.row();
 
+    if (targetIndex.isValid())
+    {
+        const QRect targetRect = m_ui->LV_openApps->visualRect(targetIndex);
+        const bool droppedInLowerHalf =
+            event->position().y() > targetRect.center().y();
+        if (droppedInLowerHalf)
+        {
+            ++toRow;
+        }
+    }
+
     if (fromRow == toRow)
     {
         event->ignore();
@@ -245,6 +259,7 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
     }
 
     m_ui->LV_openApps->setCurrentIndex(m_listModel->index(toRow, 0));
+
     event->accept();
 }
 
@@ -277,17 +292,21 @@ void AppSwitcher::cycleSelection()
 
     const int rowCount = model->rowCount();
 
-    qDebug() << "cycleSelection called, rowCount:" << rowCount
-             << "currentRow:" << m_ui->LV_openApps->currentIndex().row()
-             << "hasFocus:" << m_ui->LV_openApps->hasFocus();
-
     if (rowCount == 0)
     {
         return;
     }
 
     const int currentRow = m_ui->LV_openApps->currentIndex().row();
-    const int nextRow = (currentRow + 1) % rowCount;
+    int nextRow = currentRow;
+    for (int i = 0; i < rowCount; ++i)
+    {
+        nextRow = (nextRow + 1) % rowCount;
+        if (!m_ui->LV_openApps->isRowHidden(nextRow))
+        {
+            break;
+        }
+    }
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
 
@@ -296,7 +315,7 @@ void AppSwitcher::cycleSelection()
     m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);
 
-    // selectionCommitTimer->start(Constants::SelectionCommitTimeoutMs);
+    m_selectionCommitTimer->start(Constants::SELECTION_COMMIT_TIMEOUT_MS);
 }
 
 void AppSwitcher::cycleSelectionBackward()
@@ -310,7 +329,16 @@ void AppSwitcher::cycleSelectionBackward()
     }
 
     const int currentRow = m_ui->LV_openApps->currentIndex().row();
-    const int prevRow = (currentRow - 1 + rowCount) % rowCount;
+    int prevRow = currentRow;
+
+    for (int i = 0; i < rowCount; ++i)
+    {
+        prevRow = (currentRow - 1 + rowCount) % rowCount;
+        if (!m_ui->LV_openApps->isRowHidden(prevRow))
+        {
+            break;
+        }
+    }
 
     const QModelIndex prevIdx = model->index(prevRow, 0);
 
@@ -319,7 +347,7 @@ void AppSwitcher::cycleSelectionBackward()
     m_ui->LV_openApps->selectionModel()->select(
         prevIdx, QItemSelectionModel::ClearAndSelect);
 
-    // selectionCommitTimer->start(Constants::SelectionCommitTimeoutMs);
+    m_selectionCommitTimer->start(Constants::SELECTION_COMMIT_TIMEOUT_MS);
 }
 
 void AppSwitcher::activateSelectionAndHide()

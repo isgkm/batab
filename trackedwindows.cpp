@@ -1,9 +1,29 @@
 #include "trackedwindows.h"
 
+#include "util.h"
+
 #include <QDebug>
 
 TrackedWindows *TrackedWindows::s_instance{};
 QMutex TrackedWindows::s_mutex{};
+
+QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
+{
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - HWND is a pointer typedef; storing as a plain integer for serialization
+    out << reinterpret_cast<quintptr>(idetails.hWnd) << idetails.title
+        << static_cast<quint32>(idetails.processId);
+    return out;
+}
+
+QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
+{
+    quintptr hwndValue{};
+    quint32 processId{};
+    in >> hwndValue >> idetails.title >> processId;
+    idetails.hWnd = Util::toHandle<HWND>(hwndValue);
+    idetails.processId = processId;
+    return in;
+}
 
 TrackedWindows *TrackedWindows::getInstance()
 {
