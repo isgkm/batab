@@ -3,7 +3,7 @@
 
 #include <QStyledItemDelegate>
 
-class IndexedIconDelegate : public QStyledItemDelegate
+class IndexedIconDelegate final : public QStyledItemDelegate
 {
 public:
     using QStyledItemDelegate::QStyledItemDelegate;
@@ -12,6 +12,14 @@ public:
                const QModelIndex &index) const override;
     [[nodiscard]] QSize sizeHint(const QStyleOptionViewItem &option,
                                  const QModelIndex &index) const override;
+
+    void setNavigationActive(bool active)
+    {
+        m_navigationActive = active;
+    }
+
+private:
+    bool m_navigationActive{};
 };
 
 #endif  // INDEXEDICONDELEGATE_H

@@ -15,11 +15,12 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     , m_ui(new Ui::AppSwitcher)
     , m_listModel(new QStandardItemModel(this))
     , m_selectionCommitTimer(new QTimer(this))
+    , m_iconDelegate(new IndexedIconDelegate(this))
 {
     m_ui->setupUi(this);
 
     m_ui->LV_openApps->setModel(m_listModel);
-    m_ui->LV_openApps->setItemDelegate(new IndexedIconDelegate(this));
+    m_ui->LV_openApps->setItemDelegate(m_iconDelegate);
     m_ui->LV_openApps->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_ui->LV_openApps->setDragDropMode(QAbstractItemView::DragDrop);
     m_ui->LV_openApps->setDefaultDropAction(Qt::MoveAction);
@@ -40,6 +41,18 @@ AppSwitcher::AppSwitcher(QWidget *parent)
                          if (state == Qt::ApplicationInactive && isVisible())
                          {
                              hide();
+                         }
+                     });
+
+    QObject::connect(m_ui->LV_openApps->selectionModel(),
+                     &QItemSelectionModel::currentChanged, this, [this]() {
+                         const bool firstNavigation = !m_hasNavigated;
+                         m_hasNavigated = true;
+                         m_iconDelegate->setNavigationActive(true);
+                         if (!firstNavigation)
+                         {
+                             m_selectionCommitTimer->start(
+                                 Constants::SELECTION_COMMIT_TIMEOUT_MS);
                          }
                      });
 
@@ -149,9 +162,13 @@ void AppSwitcher::showEvent(QShowEvent *event)
     SetFocus(Util::toHandle<HWND>(winId()));
     AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
 
-    ///
     m_ui->LV_openApps->setFocus();
-    ///
+    m_hasNavigated = false;
+    m_iconDelegate->setNavigationActive(false);
+    if (m_selectionCommitTimer->isActive())
+    {
+        m_selectionCommitTimer->stop();
+    }
 
     qApp->installEventFilter(this);
 
@@ -184,6 +201,27 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
     {
         auto *keyEvent = dynamic_cast<QKeyEvent *>(event);
         const int key = keyEvent->key();
+
+        if (key == Qt::Key_Tab || key == Qt::Key_Backtab ||
+            key == Qt::Key_Down || key == Qt::Key_Up)
+        {
+            if (key == Qt::Key_Backtab || key == Qt::Key_Up ||
+                (keyEvent->modifiers() & Qt::ShiftModifier))
+            {
+                cycleSelectionBackward();
+            }
+            else
+            {
+                cycleSelection();
+            }
+            return true;
+        }
+
+        if (key == Qt::Key_Return || key == Qt::Key_Enter)
+        {
+            activateSelectionAndHide();
+            return true;
+        }
 
         if (key == Qt::Key_Escape)
         {
@@ -305,15 +343,19 @@ void AppSwitcher::cycleSelection()
         return;
     }
 
-    const int currentRow = m_ui->LV_openApps->currentIndex().row();
-    int nextRow = currentRow;
-    for (int i = 0; i < rowCount; ++i)
+    int nextRow{};
+    if (!m_hasNavigated)
     {
-        nextRow = (nextRow + 1) % rowCount;
-        if (!m_ui->LV_openApps->isRowHidden(nextRow))
+        nextRow = m_ui->LV_openApps->currentIndex().row();
+        if (nextRow < 0)
         {
-            break;
+            nextRow = 0;
         }
+    }
+    else
+    {
+        const int currentRow = m_ui->LV_openApps->currentIndex().row();
+        nextRow = (currentRow + 1) % rowCount;
     }
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
@@ -322,8 +364,10 @@ void AppSwitcher::cycleSelection()
     m_ui->LV_openApps->setCurrentIndex(nextIndex);
     m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);
-
+    m_iconDelegate->setNavigationActive(true);
+    m_ui->LV_openApps->viewport()->update();
     m_selectionCommitTimer->start(Constants::SELECTION_COMMIT_TIMEOUT_MS);
+    m_hasNavigated = true;
 }
 
 void AppSwitcher::cycleSelectionBackward()
@@ -336,16 +380,19 @@ void AppSwitcher::cycleSelectionBackward()
         return;
     }
 
-    const int currentRow = m_ui->LV_openApps->currentIndex().row();
-    int prevRow = currentRow;
-
-    for (int i = 0; i < rowCount; ++i)
+    int prevRow{};
+    if (!m_hasNavigated)
     {
-        prevRow = (currentRow - 1 + rowCount) % rowCount;
-        if (!m_ui->LV_openApps->isRowHidden(prevRow))
+        prevRow = m_ui->LV_openApps->currentIndex().row();
+        if (prevRow < 0)
         {
-            break;
+            prevRow = 0;
         }
+    }
+    else
+    {
+        const int currentRow = m_ui->LV_openApps->currentIndex().row();
+        prevRow = (currentRow - 1 + rowCount) % rowCount;
     }
 
     const QModelIndex prevIdx = model->index(prevRow, 0);
@@ -355,7 +402,10 @@ void AppSwitcher::cycleSelectionBackward()
     m_ui->LV_openApps->selectionModel()->select(
         prevIdx, QItemSelectionModel::ClearAndSelect);
 
-    m_selectionCommitTimer->start(Constants::SELECTION_COMMIT_TIMEOUT_MS);
+    m_iconDelegate->setNavigationActive(true);
+    m_ui->LV_openApps->viewport()->update();
+    // m_selectionCommitTimer->start(Constants::SELECTION_COMMIT_TIMEOUT_MS);
+    m_hasNavigated = true;
 }
 
 void AppSwitcher::activateSelectionAndHide()

@@ -49,10 +49,10 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
     {
         auto *keyboardHook = Util::toHandle<KBDLLHOOKSTRUCT *>(lParam);
         const bool keyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
-        const bool keyUp = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP);
+        const bool altDown = (keyboardHook->flags & LLKHF_ALTDOWN) != 0;
 
-        if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB &&
-            (keyboardHook->flags & LLKHF_ALTDOWN) && wParam == WM_SYSKEYDOWN)
+        if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB && altDown &&
+            wParam == WM_SYSKEYDOWN)
         {
             qDebug() << "alt+tab detected";
             keybd_event(VK_CONTROL, 0, 0, 0);
@@ -76,23 +76,14 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
             return 1;
         }
 
-        if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB)
+        if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB &&
+            altDown)
         {
             const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
             QMetaObject::invokeMethod(
                 Batab::getUI()->getAppSwitcher(),
                 shiftDown ? "cycleSelectionBackward" : "cycleSelection",
                 Qt::QueuedConnection);
-
-            return 1;
-        }
-
-        if (s_switcherOpen && keyUp && keyboardHook->vkCode == VK_MENU)
-        {
-            s_switcherOpen = false;
-            QMetaObject::invokeMethod(Batab::getUI()->getAppSwitcher(),
-                                      "activateSelectionAndHide",
-                                      Qt::QueuedConnection);
 
             return 1;
         }
@@ -133,7 +124,6 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
     }
 
     if (event == EVENT_OBJECT_SHOW) {
-        // char title[512];
         constexpr int maxTitleLength{512};
         std::vector<wchar_t> titleBuffer(maxTitleLength);
         const auto len =
@@ -147,12 +137,6 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
             hWnd, {.title = title,
                    .processId = processId,
                    .icon = Util::getIconFromHWND(hWnd)});
-
-        // for (const auto &[hWnd, windowDetails] :
-        //      TrackedWindows::getInstance()->getWindows().asKeyValueRange()) {
-        //     qDebug() << "[" << windowDetails.PID << "]: {" << hWnd << "}, " << windowDetails.title
-        //              << "\n";
-        // }
     }
 }
 
@@ -189,14 +173,8 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
         return;
     }
 
-    qDebug() << "Title actually changed:" << hWnd << newTitle;
-    tracked->updateWindowTitle(hWnd, newTitle);  // see below
+    tracked->updateWindowTitle(hWnd, newTitle);
 }
-
-// void WinProcs::setSwitcherOpen(bool open)
-// {
-//     g_switcherOpen = open;
-// }
 
 void WinProcs::registerLLKHook()
 {

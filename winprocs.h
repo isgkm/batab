@@ -1,6 +1,7 @@
 #ifndef WINPROCS_H
 #define WINPROCS_H
 
+#include <qtclasshelpermacros.h>
 #include <windows.h>
 
 #include <atomic>
@@ -8,7 +9,10 @@
 class WinProcs final
 {
 public:
-    WinProcs() = delete;
+    WinProcs() = default;
+    ~WinProcs() = default;
+
+    Q_DISABLE_COPY_MOVE(WinProcs)
 
     // get initial open windows
     static BOOL CALLBACK enumWindowsProc(HWND hWnd, LPARAM lparam);

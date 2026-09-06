@@ -54,7 +54,7 @@ void Batab::createActions()
     m_minimizeAction = new QAction(tr("&Minimize"), this);
     connect(m_minimizeAction, &QAction::triggered, this, &QWidget::hide);
 
-    m_maximizeAction = new QAction(tr("&Maximize"), this);
+    m_maximizeAction = new QAction(tr("M&aximize"), this);
     connect(m_maximizeAction, &QAction::triggered, this,
             &QWidget::showMaximized);
 

@@ -1,6 +1,8 @@
 #ifndef APPSWITCHER_H
 #define APPSWITCHER_H
 
+#include "indexedicondelegate.h"
+
 #include <QStandardItemModel>
 #include <QWidget>
 
@@ -34,6 +36,8 @@ private:
     Ui::AppSwitcher *m_ui;
     QStandardItemModel *m_listModel;
     QTimer *m_selectionCommitTimer;
+    IndexedIconDelegate *m_iconDelegate;
+    bool m_hasNavigated{};
 
     void handleAppReorder(QDropEvent *event);
     void focusAppAtSlot(int slot);

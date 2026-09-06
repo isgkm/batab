@@ -44,7 +44,7 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
         return;
     }
 
-    qDebug() << "Adding: " << hWnd << " [" << windowDetails.title
+    qDebug() << "[ DEBUG ]: Adding [" << hWnd << "] - [" << windowDetails.title
              << "] to list.";
 
     m_openWindows.insert(hWnd, windowDetails);
@@ -54,7 +54,6 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
     {
         slot = m_freeSlots.firstKey();
         m_freeSlots.remove(slot);
-        // TODO CHECK: m_slots[slot] = hWnd;
         m_slots.replace(slot, hWnd);
     }
     else
@@ -64,7 +63,6 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
     }
 
     m_slotOf.insert(hWnd, slot);
-    // openWindowOrders.emplaceBack(hWnd);
 }
 
 bool TrackedWindows::removeWindow(HWND hWnd)
@@ -74,7 +72,7 @@ bool TrackedWindows::removeWindow(HWND hWnd)
         return false;
     }
 
-    qDebug() << "Removing: " << hWnd << " from list.";
+    qDebug() << "[ DEBUG ]: Removing [" << hWnd << "] from the list.";
 
     m_openWindows.remove(hWnd);
 
@@ -115,23 +113,3 @@ void TrackedWindows::reorderSlots(const QVector<HWND> &newOrder)
         }
     }
 }
-
-// QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
-// {
-//     out << reinterpret_cast<quintptr>(idetails.hWnd) << static_cast<quint32>(idetails.PID)
-//         << idetails.title;
-//     return out;
-// }
-
-// QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
-// {
-//     quintptr hwndVal;
-//     quint32 pidVal;
-
-//     in >> hwndVal >> pidVal >> idetails.title;
-
-//     idetails.hWnd = reinterpret_cast<HWND>(hwndVal);
-//     idetails.PID = static_cast<DWORD>(pidVal);
-
-//     return in;
-// }

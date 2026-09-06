@@ -68,8 +68,7 @@ QIcon Util::getIconFromHWND(HWND hWnd)
 
     auto result = SendMessageTimeoutW(
         hWnd, WM_GETICON, ICON_BIG, 0, SMTO_ABORTIFHUNG, 100,
-        Util::reinterpretPointer<HICON, PDWORD_PTR>(
-            hIcon));  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast): Win32 API requirement
+        Util::reinterpretPointer<HICON, PDWORD_PTR>(hIcon));
 
     if (result == 0) {
         qDebug() << "SendMessageTimeoutW failed";
