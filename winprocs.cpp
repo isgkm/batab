@@ -48,7 +48,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
     if (nCode == HC_ACTION)
     {
         auto *keyboardHook = Util::toHandle<KBDLLHOOKSTRUCT *>(lParam);
-        const bool keyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
         const bool altDown = (keyboardHook->flags & LLKHF_ALTDOWN) != 0;
 
         if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB && altDown &&
@@ -71,18 +70,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
                         appSwitcher->setFocus();
                     }
                 },
-                Qt::QueuedConnection);
-
-            return 1;
-        }
-
-        if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB &&
-            altDown)
-        {
-            const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
-            QMetaObject::invokeMethod(
-                Batab::getUI()->getAppSwitcher(),
-                shiftDown ? "cycleSelectionBackward" : "cycleSelection",
                 Qt::QueuedConnection);
 
             return 1;
@@ -160,9 +147,9 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
     QString newTitle;
     if (len > 0)
     {
-        QVector<wchar_t> buf(len + 1);
-        GetWindowTextW(hWnd, buf.data(), len + 1);
-        newTitle = QString::fromWCharArray(buf.data());
+        std::vector<wchar_t> buffer(len + 1);
+        const auto gwtw = GetWindowTextW(hWnd, buffer.data(), len + 1);
+        newTitle = QString::fromWCharArray(buffer.data(), gwtw);
     }
 
     auto *tracked = TrackedWindows::getInstance();

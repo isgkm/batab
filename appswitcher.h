@@ -37,6 +37,8 @@ private:
     QStandardItemModel *m_listModel;
     QTimer *m_selectionCommitTimer;
     IndexedIconDelegate *m_iconDelegate;
+
+    bool m_timerShouldStart{};
     bool m_hasNavigated{};
 
     void handleAppReorder(QDropEvent *event);
