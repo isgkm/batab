@@ -1,13 +1,13 @@
 #ifndef TRACKEDWINDOWS_H
 #define TRACKEDWINDOWS_H
 
-#include <minwindef.h>
 #include <QHash>
 #include <QIcon>
 #include <QList>
 #include <QMap>
 #include <QMutex>
 #include <QString>
+#include <Windows.h>
 
 struct WindowDetails
 {

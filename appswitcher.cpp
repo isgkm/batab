@@ -86,20 +86,29 @@ void AppSwitcher::onTextChanged()
         }
 
         const bool matches =
-            !searchQuery.isEmpty() ||
-            !item->text().contains(searchQuery, Qt::CaseInsensitive);
+            searchQuery.isEmpty() ||
+            item->text().contains(searchQuery, Qt::CaseInsensitive);
 
-        m_ui->LV_openApps->setRowHidden(row, matches);
+        m_ui->LV_openApps->setRowHidden(row, !matches);
     }
 
+    int matchCount{0};
+    int lastMatchingRow{-1};
     for (int row = 0; row < m_listModel->rowCount(); ++row)
     {
-        qDebug() << "row: " << row << " , rowCount: " << 6;
         if (!m_ui->LV_openApps->isRowHidden(row))
         {
-            m_ui->LV_openApps->setCurrentIndex(m_listModel->index(row, 0));
-            break;
+            ++matchCount;
+            lastMatchingRow = row;
         }
+    }
+
+    if (matchCount == 1)
+    {
+        const QModelIndex onlyMatch = m_listModel->index(lastMatchingRow, 0);
+        m_ui->LV_openApps->setCurrentIndex(onlyMatch);
+        m_iconDelegate->setNavigationActive(true);
+        m_hasNavigated = true;
     }
 }
 
@@ -341,31 +350,52 @@ void AppSwitcher::focusAppAtSlot(int slot)
 void AppSwitcher::cycleSelection()
 {
     auto *model = m_ui->LV_openApps->model();
-
     const int rowCount = model->rowCount();
-
     if (rowCount == 0)
     {
         return;
     }
 
     int nextRow{};
+    bool needsAdvance{true};
+
     if (!m_hasNavigated)
     {
-        nextRow = m_ui->LV_openApps->currentIndex().row();
-        if (nextRow < 0)
+        const int currentRow = m_ui->LV_openApps->currentIndex().row();
+        if (currentRow >= 0 && !m_ui->LV_openApps->isRowHidden(currentRow))
         {
-            nextRow = 0;
+            nextRow = currentRow;
+            needsAdvance = false;
+        }
+        else
+        {
+            nextRow = -1;
         }
     }
     else
     {
-        const int currentRow = m_ui->LV_openApps->currentIndex().row();
-        nextRow = (currentRow + 1) % rowCount;
+        nextRow = m_ui->LV_openApps->currentIndex().row();
+    }
+
+    if (needsAdvance)
+    {
+        bool found = false;
+        for (int i = 0; i < rowCount; ++i)
+        {
+            nextRow = (nextRow + 1) % rowCount;
+            if (!m_ui->LV_openApps->isRowHidden(nextRow))
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            return;
+        }
     }
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
-
     m_ui->LV_openApps->setFocus();
     m_ui->LV_openApps->setCurrentIndex(nextIndex);
     m_ui->LV_openApps->selectionModel()->select(
@@ -378,7 +408,6 @@ void AppSwitcher::cycleSelection()
 void AppSwitcher::cycleSelectionBackward()
 {
     auto *model = m_ui->LV_openApps->model();
-
     const int rowCount = model->rowCount();
     if (rowCount == 0)
     {
@@ -386,27 +415,49 @@ void AppSwitcher::cycleSelectionBackward()
     }
 
     int prevRow{};
+    bool needsAdvance{true};
+
     if (!m_hasNavigated)
     {
-        prevRow = m_ui->LV_openApps->currentIndex().row();
-        if (prevRow < 0)
+        const int currentRow = m_ui->LV_openApps->currentIndex().row();
+        if (currentRow >= 0 && !m_ui->LV_openApps->isRowHidden(currentRow))
+        {
+            prevRow = currentRow;
+            needsAdvance = false;
+        }
+        else
         {
             prevRow = 0;
         }
     }
     else
     {
-        const int currentRow = m_ui->LV_openApps->currentIndex().row();
-        prevRow = (currentRow - 1 + rowCount) % rowCount;
+        prevRow = m_ui->LV_openApps->currentIndex().row();
     }
 
-    const QModelIndex prevIdx = model->index(prevRow, 0);
+    if (needsAdvance)
+    {
+        bool found{false};
+        for (int i = 0; i < rowCount; ++i)
+        {
+            prevRow = (prevRow - 1 + rowCount) % rowCount;
+            if (!m_ui->LV_openApps->isRowHidden(prevRow))
+            {
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+        {
+            return;
+        }
+    }
 
+    const QModelIndex prevIndex = model->index(prevRow, 0);
     m_ui->LV_openApps->setFocus();
-    m_ui->LV_openApps->setCurrentIndex(prevIdx);
+    m_ui->LV_openApps->setCurrentIndex(prevIndex);
     m_ui->LV_openApps->selectionModel()->select(
-        prevIdx, QItemSelectionModel::ClearAndSelect);
-
+        prevIndex, QItemSelectionModel::ClearAndSelect);
     m_iconDelegate->setNavigationActive(true);
     m_ui->LV_openApps->viewport()->update();
     m_hasNavigated = true;
