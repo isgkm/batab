@@ -46,10 +46,8 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     QObject::connect(m_ui->LV_openApps->selectionModel(),
                      &QItemSelectionModel::currentChanged, this, [this]() {
-                         const bool firstNavigation = !m_hasNavigated;
                          m_hasNavigated = true;
-                         m_iconDelegate->setNavigationActive(true);
-                         if (!firstNavigation && m_timerShouldStart)
+                         if (m_timerShouldStart)
                          {
                              m_selectionCommitTimer->start(
                                  Constants::SELECTION_COMMIT_TIMEOUT_MS);
@@ -107,7 +105,6 @@ void AppSwitcher::onTextChanged()
     {
         const QModelIndex onlyMatch = m_listModel->index(lastMatchingRow, 0);
         m_ui->LV_openApps->setCurrentIndex(onlyMatch);
-        m_iconDelegate->setNavigationActive(true);
         m_hasNavigated = true;
     }
 }
@@ -164,7 +161,6 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
     m_ui->LV_openApps->setFocus();
     m_hasNavigated = false;
-    m_iconDelegate->setNavigationActive(false);
     m_timerShouldStart = false;
     if (m_selectionCommitTimer->isActive())
     {
@@ -209,13 +205,13 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
             if (key == Qt::Key_Backtab || key == Qt::Key_Up ||
                 (keyEvent->modifiers() & Qt::ShiftModifier))
             {
-                cycleSelectionBackward();
                 m_timerShouldStart = true;
+                cycleSelectionBackward();
             }
             else
             {
-                cycleSelection();
                 m_timerShouldStart = true;
+                cycleSelection();
             }
             return true;
         }
@@ -390,7 +386,6 @@ void AppSwitcher::cycleSelection()
     m_ui->LV_openApps->setCurrentIndex(nextIndex);
     m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);
-    m_iconDelegate->setNavigationActive(true);
     m_ui->LV_openApps->viewport()->update();
     m_hasNavigated = true;
 }
@@ -427,7 +422,7 @@ void AppSwitcher::cycleSelectionBackward()
 
     if (needsAdvance)
     {
-        bool found{false};
+        bool found{};
         for (int i = 0; i < rowCount; ++i)
         {
             prevRow = (prevRow - 1 + rowCount) % rowCount;
@@ -448,7 +443,6 @@ void AppSwitcher::cycleSelectionBackward()
     m_ui->LV_openApps->setCurrentIndex(prevIndex);
     m_ui->LV_openApps->selectionModel()->select(
         prevIndex, QItemSelectionModel::ClearAndSelect);
-    m_iconDelegate->setNavigationActive(true);
     m_ui->LV_openApps->viewport()->update();
     m_hasNavigated = true;
 }

@@ -13,8 +13,7 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     painter->save();
 
-    const bool showHighlight =
-        m_navigationActive && (opt.state & QStyle::State_Selected);
+    const bool showHighlight = opt.state & QStyle::State_Selected;
     painter->setPen(showHighlight ? opt.palette.highlightedText().color()
                                   : opt.palette.text().color());
     if (showHighlight)
