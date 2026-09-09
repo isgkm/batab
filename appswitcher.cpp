@@ -162,16 +162,6 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
     m_listModel->setRowCount(row);
 
-    HWND hwndForeground = GetForegroundWindow();
-    const DWORD foregroundThreadID =
-        GetWindowThreadProcessId(hwndForeground, nullptr);
-    const DWORD currentThreadId = GetCurrentThreadId();
-
-    AttachThreadInput(foregroundThreadID, currentThreadId, TRUE);
-    SetForegroundWindow(Util::toHandle<HWND>(winId()));
-    SetFocus(Util::toHandle<HWND>(winId()));
-    AttachThreadInput(foregroundThreadID, currentThreadId, FALSE);
-
     m_ui->LV_openApps->setFocus();
     m_hasNavigated = false;
     m_iconDelegate->setNavigationActive(false);
