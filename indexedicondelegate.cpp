@@ -24,11 +24,6 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     constexpr int margin{6};
     const QRect rect = opt.rect;
-
-    // painter->setPen(opt.state & QStyle::State_Selected
-    //                     ? opt.palette.highlightedText().color()
-    //                     : opt.palette.text().color());
-
     const int slot = index.data(Constants::SLOT_INDEX_ROLE).toInt();
     const QString number = QString::number(slot + 1) + " -";
     const int numberWidth = opt.fontMetrics.horizontalAdvance(number);
