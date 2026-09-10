@@ -13,12 +13,13 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     painter->save();
 
-    const bool mouseHover = (opt.state & QStyle::State_MouseOver);
+    const auto mouseHover = (opt.state & QStyle::State_MouseOver);
+    const auto tabFocused = (opt.state & QStyle::State_Selected);
 
     // painter->setPen(opt.palette.text().color());
-    if (mouseHover)
+    if (mouseHover || tabFocused)
     {
-        painter->fillRect(opt.rect, opt.palette.dark());
+        painter->fillRect(opt.rect, opt.palette.button().color());
     }
 
     constexpr int margin{6};
