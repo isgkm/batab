@@ -13,12 +13,12 @@ void IndexedIconDelegate::paint(QPainter *painter,
 
     painter->save();
 
-    const bool showHighlight = opt.state & QStyle::State_Selected;
-    painter->setPen(showHighlight ? opt.palette.highlightedText().color()
-                                  : opt.palette.text().color());
-    if (showHighlight)
+    const bool mouseHover = (opt.state & QStyle::State_MouseOver);
+
+    // painter->setPen(opt.palette.text().color());
+    if (mouseHover)
     {
-        painter->fillRect(opt.rect, opt.palette.highlight());
+        painter->fillRect(opt.rect, opt.palette.dark());
     }
 
     constexpr int margin{6};
