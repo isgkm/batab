@@ -4,9 +4,6 @@
 
 #include <QDebug>
 
-TrackedWindows *TrackedWindows::s_instance{};
-QMutex TrackedWindows::s_mutex{};
-
 QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
 {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - HWND is a pointer typedef; storing as a plain integer for serialization
@@ -25,14 +22,9 @@ QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
     return in;
 }
 
-TrackedWindows *TrackedWindows::getInstance()
+TrackedWindows &TrackedWindows::getInstance()
 {
-    const QMutexLocker<QMutex> lock(&s_mutex);
-
-    if (s_instance == nullptr)
-    {
-        s_instance = new TrackedWindows();
-    }
+    static TrackedWindows s_instance;
 
     return s_instance;
 }

@@ -6,7 +6,6 @@
 #include <QIcon>
 #include <QList>
 #include <QMap>
-#include <QMutex>
 #include <QObject>
 #include <QSet>
 #include <QString>
@@ -40,7 +39,7 @@ class TrackedWindows final : public QObject
 public:
     Q_DISABLE_COPY_MOVE(TrackedWindows)
 
-    static TrackedWindows *getInstance();
+    static TrackedWindows &getInstance();
 
     void addWindow(HWND hWnd, const WindowDetails &windowDetails);
     bool removeWindow(HWND hWnd);
@@ -74,13 +73,9 @@ public:
 signals:
     void queuedAppActuallyClosed(int slot);
 
-protected:
+private:
     TrackedWindows() = default;
     ~TrackedWindows() override = default;
-
-private:
-    static TrackedWindows *s_instance;
-    static QMutex s_mutex;
 
     QHash<HWND, WindowDetails> m_openWindows;
 

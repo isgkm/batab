@@ -75,7 +75,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     QObject::connect(m_ui->PTE_appSearch, &QPlainTextEdit::textChanged, this,
                      &AppSwitcher::onTextChanged);
 
-    QObject::connect(TrackedWindows::getInstance(),
+    QObject::connect(&TrackedWindows::getInstance(),
                      &TrackedWindows::queuedAppActuallyClosed, this,
                      &AppSwitcher::removeQueuedAppToClose);
 }
@@ -179,9 +179,8 @@ void AppSwitcher::showEvent(QShowEvent *event)
 {
     m_listModel->clear();
 
-    auto *trackedWindows = TrackedWindows::getInstance();
-    const auto ordered = trackedWindows->getOrderedWindows();
-    const auto windows = trackedWindows->getWindows();
+    const auto ordered = TrackedWindows::getInstance().getOrderedWindows();
+    const auto windows = TrackedWindows::getInstance().getWindows();
 
     m_listModel->setRowCount(static_cast<int>(ordered.size()));
 
@@ -216,7 +215,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
         item->setData(QVariant::fromValue(wdi),
                       Constants::ROLE_INTERNAL_LIST_DATA);
-        item->setData(trackedWindows->getWindowOrder(hWnd),
+        item->setData(TrackedWindows::getInstance().getWindowOrder(hWnd),
                       Constants::ROLE_SLOT_INDEX);
 
         m_listModel->setItem(row, item);
@@ -363,7 +362,7 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
             m_listModel->item(row)->data(Constants::ROLE_INTERNAL_LIST_DATA);
         newOrder.push_back(data.value<WindowDetailsInternal>().hWnd);
     }
-    TrackedWindows::getInstance()->reorderSlots(newOrder);
+    TrackedWindows::getInstance().reorderSlots(newOrder);
 
     for (int row = 0; row < m_listModel->rowCount(); ++row)
     {

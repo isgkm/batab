@@ -188,7 +188,7 @@ void Util::closeAppWithHWND(HWND hWnd, int slot)
 
     if (slot >= 0)
     {
-        TrackedWindows::getInstance()->queueSlotToTrack(slot);
+        TrackedWindows::getInstance().queueSlotToTrack(slot);
     }
 
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
@@ -220,7 +220,7 @@ void Util::terminateAppWithHWND(HWND hWnd, int slot)
 
     if (slot >= 0)
     {
-        TrackedWindows::getInstance()->queueSlotToTrack(slot);
+        TrackedWindows::getInstance().queueSlotToTrack(slot);
     }
 
     TerminateProcess(handle, 1);

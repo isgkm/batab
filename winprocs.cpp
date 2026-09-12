@@ -34,7 +34,7 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
     DWORD processId = 0;
     GetWindowThreadProcessId(hWnd, &processId);
 
-    TrackedWindows::getInstance()->addWindow(
+    TrackedWindows::getInstance().addWindow(
         hWnd, {.title = QString::fromStdWString(windowTitle),
                .processId = processId,
                .icon = Util::getIconFromHWND(hWnd)});
@@ -93,7 +93,7 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
     }
 
     if (event == EVENT_OBJECT_DESTROY) {
-        TrackedWindows::getInstance()->removeWindow(hWnd);
+        TrackedWindows::getInstance().removeWindow(hWnd);
         return;
     }
 
@@ -120,7 +120,7 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
         DWORD processId = 0;
         GetWindowThreadProcessId(hWnd, &processId);
 
-        TrackedWindows::getInstance()->addWindow(
+        TrackedWindows::getInstance().addWindow(
             hWnd, {.title = title,
                    .processId = processId,
                    .icon = Util::getIconFromHWND(hWnd)});
@@ -152,15 +152,14 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
         newTitle = QString::fromWCharArray(buffer.data(), gwtw);
     }
 
-    auto *tracked = TrackedWindows::getInstance();
-    const auto windows = tracked->getWindows();
+    const auto windows = TrackedWindows::getInstance().getWindows();
     const auto it = windows.constFind(hWnd);
     if (it != windows.constEnd() && it.value().title == newTitle)
     {
         return;
     }
 
-    tracked->updateWindowTitle(hWnd, newTitle);
+    TrackedWindows::getInstance().updateWindowTitle(hWnd, newTitle);
 }
 
 void WinProcs::registerLLKHook()
