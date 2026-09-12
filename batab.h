@@ -3,8 +3,10 @@
 
 #include "appswitcher.h"
 
+#include <QElapsedTimer>
 #include <QMainWindow>
 #include <QSystemTrayIcon>
+#include <QTimer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -34,16 +36,20 @@ public:
 protected:
     void createActions();
     void createTrayIcon();
+    void checkHotCorner();
 
 private:
     Ui::Batab *m_ui;
     static Batab *s_ui;
 
-    QSystemTrayIcon *m_trayIcon{};
-    QMenu *m_trayIconMenu{};
-
     AppSwitcher *m_appSwitcher{};
 
+    QTimer *m_hotCornerCheckTimer{};
+    QElapsedTimer m_hotCornerElapsedTime;
+    bool m_hotCornerTimerRunning{false};
+
+    QSystemTrayIcon *m_trayIcon{};
+    QMenu *m_trayIconMenu{};
     QAction *m_minimizeAction{};
     QAction *m_maximizeAction{};
     QAction *m_restoreAction{};
