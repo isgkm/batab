@@ -7,7 +7,8 @@
 #include "util.h"
 #include "winprocs.h"
 
-#include <qtimer.h>
+#include <QMenu>
+#include <QTimer>
 #include <windows.h>
 
 AppSwitcher::AppSwitcher(QWidget *parent)
@@ -16,14 +17,25 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     , m_listModel(new QStandardItemModel(this))
     , m_selectionCommitTimer(new QTimer(this))
     , m_iconDelegate(new IndexedIconDelegate(this))
+    , m_customItemContextMenu(new QMenu(this))
 {
     m_ui->setupUi(this);
+
+    m_ui->LV_openApps->setContextMenuPolicy(Qt::CustomContextMenu);
 
     m_ui->LV_openApps->setModel(m_listModel);
     m_ui->LV_openApps->setItemDelegate(m_iconDelegate);
     m_ui->LV_openApps->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_ui->LV_openApps->setDragDropMode(QAbstractItemView::DragDrop);
     m_ui->LV_openApps->setDefaultDropAction(Qt::MoveAction);
+
+    m_actionAddAppRuleByName =
+        m_customItemContextMenu->addAction(tr("Add name rule for %1"));
+    m_actionAddAppRuleByPath =
+        m_customItemContextMenu->addAction(tr("Add path rule for %1"));
+    m_actionTerminateApp =
+        m_customItemContextMenu->addAction(tr("Terminate %1"));
+    m_actionCloseApp = m_customItemContextMenu->addAction(tr("Close %1"));
 
     setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
                    Qt::WindowStaysOnTopHint);
@@ -57,18 +69,20 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     QObject::connect(m_ui->LV_openApps, &QListView::clicked,
                      &Util::focusWindowAtIndex);
 
+    QObject::connect(m_ui->LV_openApps, &QListView::customContextMenuRequested,
+                     this, &AppSwitcher::customContextMenuRequested);
+
     QObject::connect(m_ui->PTE_appSearch, &QPlainTextEdit::textChanged, this,
                      &AppSwitcher::onTextChanged);
+
+    QObject::connect(TrackedWindows::getInstance(),
+                     &TrackedWindows::queuedAppActuallyClosed, this,
+                     &AppSwitcher::removeQueuedAppToClose);
 }
 
 AppSwitcher::~AppSwitcher()
 {
     delete m_ui;
-}
-
-void AppSwitcher::showUIAfterTimerCompleted()
-{
-    show();
 }
 
 void AppSwitcher::onTextChanged()
@@ -109,6 +123,58 @@ void AppSwitcher::onTextChanged()
     }
 }
 
+void AppSwitcher::customContextMenuRequested(const QPoint &pos)
+{
+    const auto index = m_ui->LV_openApps->indexAt(pos);
+
+    if (!index.isValid())
+    {
+        return;
+    }
+
+    const auto data = index.data(Constants::ROLE_INTERNAL_LIST_DATA);
+
+    if (data.isValid() && data.canConvert<WindowDetailsInternal>())
+    {
+        const auto idata = data.value<WindowDetailsInternal>();
+
+        const auto appExePath = Util::getFullProcessPath(idata.processId);
+        const auto appName = Util::getAppNameFromTitle(idata.title);
+
+        const QFontMetrics metrics(this->font());
+        const QString elidedText =
+            metrics.elidedText(idata.title, Qt::ElideRight, 128);
+
+        m_actionAddAppRuleByName->setText(
+            tr("Add name rule for \"%1\"").arg(appName));
+        m_actionAddAppRuleByPath->setText(
+            tr("Add path rule for %1").arg(appExePath));
+        m_actionTerminateApp->setText(tr("Terminate %1").arg(elidedText));
+        m_actionCloseApp->setText(tr("Close %1").arg(elidedText));
+
+        const auto *selected = m_customItemContextMenu->exec(mapToGlobal(pos));
+
+        if (selected == m_actionAddAppRuleByName)
+        {
+            qDebug() << "add rule by name selected: ";
+        }
+        else if (selected == m_actionAddAppRuleByPath)
+        {
+            qDebug() << "add rule by path selected";
+        }
+        else if (selected == m_actionTerminateApp)
+        {
+            qDebug() << "Terminating hWnd: " << idata.hWnd;
+            Util::terminateAppWithHWND(idata.hWnd, index.row());
+        }
+        else if (selected == m_actionCloseApp)
+        {
+            qDebug() << "Closing hWnd: " << idata.hWnd;
+            Util::closeAppWithHWND(idata.hWnd, index.row());
+        }
+    }
+}
+
 void AppSwitcher::showEvent(QShowEvent *event)
 {
     m_listModel->clear();
@@ -119,7 +185,7 @@ void AppSwitcher::showEvent(QShowEvent *event)
 
     m_listModel->setRowCount(static_cast<int>(ordered.size()));
 
-    int row{0};
+    int row{};
     for (HWND hWnd : ordered)
     {
         if (!hWnd)
@@ -149,9 +215,9 @@ void AppSwitcher::showEvent(QShowEvent *event)
                                         .processId = wDetails.processId};
 
         item->setData(QVariant::fromValue(wdi),
-                      Constants::INTERNAL_LIST_DATA_ROLE);
+                      Constants::ROLE_INTERNAL_LIST_DATA);
         item->setData(trackedWindows->getWindowOrder(hWnd),
-                      Constants::SLOT_INDEX_ROLE);
+                      Constants::ROLE_SLOT_INDEX);
 
         m_listModel->setItem(row, item);
         ++row;
@@ -294,14 +360,14 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
     for (int row = 0; row < m_listModel->rowCount(); ++row)
     {
         const auto data =
-            m_listModel->item(row)->data(Constants::INTERNAL_LIST_DATA_ROLE);
+            m_listModel->item(row)->data(Constants::ROLE_INTERNAL_LIST_DATA);
         newOrder.push_back(data.value<WindowDetailsInternal>().hWnd);
     }
     TrackedWindows::getInstance()->reorderSlots(newOrder);
 
     for (int row = 0; row < m_listModel->rowCount(); ++row)
     {
-        m_listModel->item(row)->setData(row, Constants::SLOT_INDEX_ROLE);
+        m_listModel->item(row)->setData(row, Constants::ROLE_SLOT_INDEX);
     }
 
     m_ui->LV_openApps->setCurrentIndex(m_listModel->index(toRow, 0));
@@ -317,12 +383,12 @@ void AppSwitcher::focusAppAtSlot(int slot)
     for (int row = 0; row < model->rowCount(); ++row)
     {
         const QModelIndex index = model->index(row, 0);
-        if (index.data(Constants::SLOT_INDEX_ROLE).toInt() != slot)
+        if (index.data(Constants::ROLE_SLOT_INDEX).toInt() != slot)
         {
             continue;
         }
 
-        const QVariant data = index.data(Constants::INTERNAL_LIST_DATA_ROLE);
+        const QVariant data = index.data(Constants::ROLE_INTERNAL_LIST_DATA);
         if (data.isValid() && data.canConvert<WindowDetailsInternal>())
         {
             const auto idata = data.value<WindowDetailsInternal>();
@@ -454,7 +520,7 @@ void AppSwitcher::activateSelectionAndHide()
     const QModelIndex idx = m_ui->LV_openApps->currentIndex();
     if (idx.isValid())
     {
-        const QVariant data = idx.data(Constants::INTERNAL_LIST_DATA_ROLE);
+        const QVariant data = idx.data(Constants::ROLE_INTERNAL_LIST_DATA);
         if (data.isValid() && data.canConvert<WindowDetailsInternal>())
         {
             Util::focusWindowWithHWND(data.value<WindowDetailsInternal>().hWnd);

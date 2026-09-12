@@ -31,9 +31,6 @@ public:
         return m_appSwitcher;
     }
 
-signals:
-    void timerCompleted();
-
 protected:
     void createActions();
     void createTrayIcon();
@@ -51,7 +48,5 @@ private:
     QAction *m_maximizeAction{};
     QAction *m_restoreAction{};
     QAction *m_quitAction{};
-
-    QTimer *m_timer{};
 };
 #endif // BATAB_H

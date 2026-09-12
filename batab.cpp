@@ -13,16 +13,11 @@ Batab::Batab(QWidget *parent)
     : QMainWindow(parent)
     , m_ui(new Ui::Batab)
     , m_appSwitcher(new AppSwitcher())
-    , m_timer(new QTimer(this))
 {
     m_ui->setupUi(this);
     s_ui = this;
 
     EnumWindows(WinProcs::enumWindowsProc, 0);
-
-    m_timer->setSingleShot(true);
-    QObject::connect(m_timer, &QTimer::timeout, m_appSwitcher,
-                     &AppSwitcher::showUIAfterTimerCompleted);
 
     WinProcs::registerLLKHook();
     WinProcs::registerWEHooks();

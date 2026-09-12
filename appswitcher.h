@@ -23,10 +23,14 @@ public:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
-    void showUIAfterTimerCompleted();
+    void removeQueuedAppToClose(int slot)
+    {
+        m_listModel->removeRow(slot);
+    }
 
 private slots:
     void onTextChanged();
+    void customContextMenuRequested(const QPoint &pos);
 
 protected:
     void showEvent(QShowEvent *event) override;
@@ -37,6 +41,12 @@ private:
     QStandardItemModel *m_listModel;
     QTimer *m_selectionCommitTimer;
     IndexedIconDelegate *m_iconDelegate;
+
+    QMenu *m_customItemContextMenu;
+    QAction *m_actionCloseApp;
+    QAction *m_actionTerminateApp;
+    QAction *m_actionAddAppRuleByName;
+    QAction *m_actionAddAppRuleByPath;
 
     bool m_timerShouldStart{};
     bool m_hasNavigated{};

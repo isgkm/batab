@@ -85,6 +85,12 @@ bool TrackedWindows::removeWindow(HWND hWnd)
         m_freeSlots.insert(slot, true);
     }
 
+    if (m_queuedSlotsToClose.contains(slot))
+    {
+        m_queuedSlotsToClose.remove(slot);
+        emit queuedAppActuallyClosed(slot);
+    }
+
     return true;
 }
 
