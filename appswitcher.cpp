@@ -2,6 +2,7 @@
 
 #include "constants.h"
 #include "indexedicondelegate.h"
+#include "settings.h"
 #include "trackedwindows.h"
 #include "ui_appswitcher.h"
 #include "util.h"
@@ -62,7 +63,8 @@ AppSwitcher::AppSwitcher(QWidget *parent)
                          if (m_timerShouldStart)
                          {
                              m_selectionCommitTimer->start(
-                                 Constants::SELECTION_COMMIT_TIMEOUT_MS);
+                                 Settings::getInstance()
+                                     .selectionCommitTimeoutMs());
                          }
                      });
 

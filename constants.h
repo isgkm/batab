@@ -1,13 +1,21 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
-#include <qnamespace.h>
+#include <QObject>
 
 namespace Constants {
-constexpr int SELECTION_COMMIT_TIMEOUT_MS = 1000;
+inline constexpr auto ROLE_INTERNAL_LIST_DATA = Qt::UserRole + 1;
+inline constexpr auto ROLE_SLOT_INDEX = Qt::UserRole + 2;
 
-constexpr auto ROLE_INTERNAL_LIST_DATA = Qt::UserRole + 1;
-constexpr auto ROLE_SLOT_INDEX = Qt::UserRole + 2;
+inline constexpr auto SETTINGS_KEY_SELECTION_COMMIT_TIMEOUT_MS =
+    QLatin1StringView("selection/commitTimeoutMs");
+
+inline constexpr auto SETTINGS_KEY_HOT_CORNER_SIZE =
+    QLatin1StringView("hotCorner/size");
+
+inline constexpr auto SETTINGS_KEY_HOT_CORNER_ELAPSED_TIME_MS =
+    QLatin1StringView("hotCorner/elapsedTimeMs");
+
 }  // namespace Constants
 
 #endif  // CONSTANTS_H

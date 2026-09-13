@@ -24,6 +24,7 @@ qt_add_executable(batab
     indexedicondelegate.cpp
     indexedicondelegate.h
     constants.h
+    settings.h settings.cpp
 )
 
 # Configure compiler warnings

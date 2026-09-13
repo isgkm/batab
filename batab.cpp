@@ -1,5 +1,6 @@
 #include "batab.h"
 
+#include "settings.h"
 #include "ui_batab.h"
 #include "winprocs.h"
 
@@ -87,7 +88,7 @@ void Batab::checkHotCorner()
         return;
     }
 
-    constexpr int cornerSize{16};
+    const int cornerSize{Settings::getInstance().hotCornerSize()};
     const bool inTopLeftCorner =
         cursorPos.x <= cornerSize && cursorPos.y <= cornerSize;
 
@@ -98,7 +99,8 @@ void Batab::checkHotCorner()
             m_hotCornerTimerRunning = true;
             m_hotCornerElapsedTime.start();
         }
-        else if (m_hotCornerElapsedTime.elapsed() >= 100)
+        else if (m_hotCornerElapsedTime.elapsed() >=
+                 Settings::getInstance().hotCornerElapsedTimeMs())
         {
             m_appSwitcher->show();
             m_appSwitcher->activateWindow();
