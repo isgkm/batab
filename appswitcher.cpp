@@ -18,6 +18,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
     , m_listModel(new QStandardItemModel(this))
     , m_selectionCommitTimer(new QTimer(this))
     , m_iconDelegate(new IndexedIconDelegate(this))
+    , m_slotInputTimer(new QTimer(this))
     , m_customItemContextMenu(new QMenu(this))
 {
     m_ui->setupUi(this);
@@ -48,6 +49,15 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     QObject::connect(m_selectionCommitTimer, &QTimer::timeout, this,
                      &AppSwitcher::activateSelectionAndHide);
+
+    m_slotInputTimer->setSingleShot(true);
+    QObject::connect(m_slotInputTimer, &QTimer::timeout, this, [this]() {
+        if (!m_pendingSlotDigits.isEmpty())
+        {
+            focusAppAtSlot(m_pendingSlotDigits.toInt() - 1);
+            m_pendingSlotDigits.clear();
+        }
+    });
 
     QObject::connect(qApp, &QGuiApplication::applicationStateChanged, this,
                      [this](Qt::ApplicationState state) {
@@ -291,26 +301,58 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
 
         if (key == Qt::Key_Escape)
         {
+            if (m_ui->PTE_appSearch->hasFocus())
+            {
+                m_ui->PTE_appSearch->clear();
+                m_ui->PTE_appSearch->clearFocus();
+                return true;
+            }
+
             hide();
             return true;
         }
 
-        if (!m_ui->PTE_appSearch->hasFocus() && key >= Qt::Key_1 &&
-            key <= Qt::Key_9)
+        if (!m_ui->PTE_appSearch->hasFocus())
         {
-            focusAppAtSlot(key - Qt::Key_1);
-            return true;
-        }
+            if (key == Qt::Key_0)
+            {
+                focusAppAtSlot(9);
+                m_pendingSlotDigits.clear();
+                m_slotInputTimer->stop();
+                return true;
+            }
 
-        if (!m_ui->PTE_appSearch->hasFocus() && key >= Qt::Key_A &&
-            key <= Qt::Key_Z)
-        {
-            m_ui->PTE_appSearch->setFocus();
-            QTextCursor cursor = m_ui->PTE_appSearch->textCursor();
-            cursor.movePosition(QTextCursor::End);
-            cursor.insertText(keyEvent->text());
-            m_ui->PTE_appSearch->setTextCursor(cursor);
-            return true;
+            if (key >= Qt::Key_1 && key <= Qt::Key_9)
+            {
+                m_pendingSlotDigits += QChar('1' + (key - Qt::Key_1));
+
+                const int rowCount = m_listModel->rowCount();
+                const int typedValue = m_pendingSlotDigits.toInt();
+
+                if (m_pendingSlotDigits.length() >= 2 ||
+                    typedValue * 10 > rowCount)
+                {
+                    focusAppAtSlot(typedValue - 1);
+                    m_pendingSlotDigits.clear();
+                    m_slotInputTimer->stop();
+                }
+                else
+                {
+                    m_slotInputTimer->start(500);
+                }
+
+                return true;
+            }
+
+            if (key >= Qt::Key_A && key <= Qt::Key_Z)
+            {
+                m_ui->PTE_appSearch->setFocus();
+                QTextCursor cursor = m_ui->PTE_appSearch->textCursor();
+                cursor.movePosition(QTextCursor::End);
+                cursor.insertText(keyEvent->text());
+                m_ui->PTE_appSearch->setTextCursor(cursor);
+                return true;
+            }
         }
     }
 

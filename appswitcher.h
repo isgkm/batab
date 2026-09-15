@@ -42,6 +42,9 @@ private:
     QTimer *m_selectionCommitTimer;
     IndexedIconDelegate *m_iconDelegate;
 
+    QString m_pendingSlotDigits;
+    QTimer *m_slotInputTimer;
+
     QMenu *m_customItemContextMenu;
     QAction *m_actionCloseApp;
     QAction *m_actionTerminateApp;
