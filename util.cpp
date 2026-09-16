@@ -179,22 +179,19 @@ QString Util::getAppNameFromTitle(const QString &appTitle)
     return candidate.isEmpty() ? appTitle : candidate;
 }
 
-void Util::closeAppWithHWND(HWND hWnd, int slot)
+void Util::closeAppWithHWND(HWND hWnd)
 {
     if (hWnd == nullptr)
     {
         return;
     }
 
-    if (slot >= 0)
-    {
-        TrackedWindows::getInstance().queueSlotToTrack(slot);
-    }
+    TrackedWindows::getInstance().queueSlotToTrack(hWnd);
 
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
 }
 
-void Util::terminateAppWithHWND(HWND hWnd, int slot)
+void Util::terminateAppWithHWND(HWND hWnd)
 {
     if (hWnd == nullptr)
     {
@@ -218,10 +215,7 @@ void Util::terminateAppWithHWND(HWND hWnd, int slot)
         CloseHandle(handle);
     });
 
-    if (slot >= 0)
-    {
-        TrackedWindows::getInstance().queueSlotToTrack(slot);
-    }
+    TrackedWindows::getInstance().queueSlotToTrack(hWnd);
 
     TerminateProcess(handle, 1);
 }

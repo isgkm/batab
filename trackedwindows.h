@@ -45,9 +45,9 @@ public:
     bool removeWindow(HWND hWnd);
     void updateWindowTitle(HWND hWnd, const QString &newTitle);
     void reorderSlots(const QVector<HWND> &newOrder);
-    void queueSlotToTrack(int slot)
+    void queueSlotToTrack(HWND hWnd)
     {
-        m_queuedSlotsToClose.insert(slot);
+        m_queuedSlotsToClose.insert(hWnd);
     }
 
     [[nodiscard]] QHash<HWND, WindowDetails> getWindows() const
@@ -79,7 +79,7 @@ private:
 
     QHash<HWND, WindowDetails> m_openWindows;
 
-    QSet<int> m_queuedSlotsToClose;
+    QSet<HWND> m_queuedSlotsToClose;
 
     QVector<HWND> m_slots;
     QHash<HWND, int> m_slotOf;

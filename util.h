@@ -10,14 +10,15 @@
 namespace Util {
 
 [[nodiscard]] bool isAltTabWindow(HWND hWnd);
+[[nodiscard]] bool isSystemWindow(HWND hWnd);
 [[nodiscard]] QIcon getIconFromHWND(HWND hWnd);
 [[nodiscard]] QString getFullProcessPath(DWORD processId);
 [[nodiscard]] QString getAppNameFromTitle(const QString &title);
 
 void focusWindowWithHWND(HWND hWnd);
 void focusWindowAtIndex(const QModelIndex &listIndex);
-void closeAppWithHWND(HWND hWnd, int slot);
-void terminateAppWithHWND(HWND hWnd, int slot);
+void closeAppWithHWND(HWND hWnd);
+void terminateAppWithHWND(HWND hWnd);
 
 template <class T>
 concept PtrLike = std::is_pointer_v<T>;

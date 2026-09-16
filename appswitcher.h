@@ -25,7 +25,15 @@ public:
 public slots:
     void removeQueuedAppToClose(int slot)
     {
-        m_listModel->removeRow(slot);
+        for (int row = 0; row < m_listModel->rowCount(); ++row)
+        {
+            auto *item = m_listModel->item(row);
+            if (item && item->data(Constants::ROLE_SLOT_INDEX).toInt() == slot)
+            {
+                m_listModel->removeRow(row);
+                break;
+            }
+        }
     }
 
 private slots:

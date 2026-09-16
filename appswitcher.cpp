@@ -177,12 +177,12 @@ void AppSwitcher::customContextMenuRequested(const QPoint &pos)
         else if (selected == m_actionTerminateApp)
         {
             qDebug() << "Terminating hWnd: " << idata.hWnd;
-            Util::terminateAppWithHWND(idata.hWnd, index.row());
+            Util::terminateAppWithHWND(idata.hWnd);
         }
         else if (selected == m_actionCloseApp)
         {
             qDebug() << "Closing hWnd: " << idata.hWnd;
-            Util::closeAppWithHWND(idata.hWnd, index.row());
+            Util::closeAppWithHWND(idata.hWnd);
         }
     }
 }
