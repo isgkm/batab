@@ -16,7 +16,6 @@ void IndexedIconDelegate::paint(QPainter *painter,
     const auto mouseHover = (opt.state & QStyle::State_MouseOver);
     const auto tabFocused = (opt.state & QStyle::State_Selected);
 
-    // painter->setPen(opt.palette.text().color());
     if (mouseHover || tabFocused)
     {
         painter->fillRect(opt.rect, opt.palette.button().color());
@@ -25,7 +24,10 @@ void IndexedIconDelegate::paint(QPainter *painter,
     constexpr int margin{6};
     const QRect rect = opt.rect;
     const int slot = index.data(Constants::ROLE_SLOT_INDEX).toInt();
-    const QString number = QString::number(slot + 1) + " -";
+    const int rowCount = index.model()->rowCount();
+    const auto maxDigits = QString::number(rowCount).length();
+    const QString number =
+        QString::number(slot + 1).rightJustified(maxDigits) + " -";
     const int numberWidth = opt.fontMetrics.horizontalAdvance(number);
     const QRect numberRect(rect.left() + margin, rect.top(), numberWidth,
                            rect.height());

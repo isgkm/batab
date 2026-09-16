@@ -26,7 +26,7 @@ BOOL CALLBACK WinProcs::enumWindowsProc(HWND hWnd, LPARAM lparam)
     GetWindowTextW(hWnd, windowTitle.data(),
                    static_cast<int>(windowTitle.size() + 1));
 
-    if (!Util::isAltTabWindow(hWnd))
+    if (!Util::isAltTabWindow(hWnd) || Util::isSystemWindow(hWnd))
     {
         return TRUE;
     }
@@ -92,7 +92,9 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
         return;
     }
 
-    if (event == EVENT_OBJECT_DESTROY) {
+    if (event == EVENT_OBJECT_DESTROY || event == EVENT_OBJECT_HIDE ||
+        event == EVENT_OBJECT_CLOAKED)
+    {
         TrackedWindows::getInstance().removeWindow(hWnd);
         return;
     }
@@ -101,21 +103,23 @@ void CALLBACK WinProcs::winAppLifecycleEventProc(HWINEVENTHOOK hWinEventHook,
         return;
     }
 
-    if (GetAncestor(hWnd, GA_ROOT) != hWnd) {
-        return;
-    }
-
-    if (!Util::isAltTabWindow(hWnd))
+    if (!Util::isAltTabWindow(hWnd) || Util::isSystemWindow(hWnd))
     {
         return;
     }
 
-    if (event == EVENT_OBJECT_SHOW) {
+    if (event == EVENT_OBJECT_SHOW || event == EVENT_OBJECT_UNCLOAKED)
+    {
         constexpr int maxTitleLength{512};
         std::vector<wchar_t> titleBuffer(maxTitleLength);
         const auto len =
             GetWindowTextW(hWnd, titleBuffer.data(), maxTitleLength);
         const QString title = QString::fromWCharArray(titleBuffer.data(), len);
+
+        if (title.isEmpty())
+        {
+            return;
+        }
 
         DWORD processId = 0;
         GetWindowThreadProcessId(hWnd, &processId);
@@ -138,7 +142,7 @@ void CALLBACK WinProcs::winAppNameChangeEventProc(HWINEVENTHOOK hWinEventHook,
         return;
     }
 
-    if (!Util::isAltTabWindow(hWnd))
+    if (!Util::isAltTabWindow(hWnd) || Util::isSystemWindow(hWnd))
     {
         return;
     }
@@ -207,7 +211,8 @@ void WinProcs::registerWEHooks()
 
     s_hookWinAppNameChangeEvent =
         SetWinEventHook(EVENT_OBJECT_NAMECHANGE, EVENT_OBJECT_NAMECHANGE,
-                        nullptr, winAppNameChangeEventProc, 0, 0, 0);
+                        nullptr, winAppNameChangeEventProc, 0, 0,
+                        WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 
     if (s_hookWinAppLifecycleEvent != nullptr &&
         s_hookWinAppNameChangeEvent != nullptr)

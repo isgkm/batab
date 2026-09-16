@@ -1,6 +1,7 @@
 #ifndef APPSWITCHER_H
 #define APPSWITCHER_H
 
+#include "constants.h"
 #include "indexedicondelegate.h"
 
 #include <QStandardItemModel>

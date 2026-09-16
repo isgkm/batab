@@ -5,6 +5,7 @@
 
 #include <dwmapi.h>
 #include <QDebug>
+#include <QFileInfo>
 #include <windows.h>
 
 namespace {
@@ -62,6 +63,24 @@ bool Util::isAltTabWindow(HWND hWnd)
     return true;
 }
 
+bool Util::isSystemWindow(HWND hWnd)
+{
+    DWORD processId{};
+    GetWindowThreadProcessId(hWnd, &processId);
+
+    const auto exePath = Util::getFullProcessPath(processId);
+    const auto exeName = QFileInfo(exePath).fileName();
+
+    static const QSet<QString> s_excludedExeNames{
+        QLatin1StringView("SearchApp.exe"),
+        QLatin1StringView("SearchHost.exe"),
+        QLatin1StringView("ShellExperienceHost.exe"),
+        QLatin1StringView("StartMenuExperienceHost.exe"),
+    };
+
+    return s_excludedExeNames.contains(exeName);
+}
+
 QIcon Util::getIconFromHWND(HWND hWnd)
 {
     HICON hIcon{};
@@ -92,11 +111,11 @@ QIcon Util::getIconFromHWND(HWND hWnd)
         return {};
     }
 
-    QIcon qIcon(QPixmap::fromImage(QImage::fromHICON(hIconOwned)));
+    auto cleanup = qScopeGuard([hIconOwned] {
+        DestroyIcon(hIconOwned);
+    });
 
-    DestroyIcon(hIconOwned);
-
-    return qIcon;
+    return {QPixmap::fromImage(QImage::fromHICON(hIconOwned))};
 }
 
 void Util::focusWindowWithHWND(HWND hWnd)
