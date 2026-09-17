@@ -49,6 +49,8 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
     {
         auto *keyboardHook = Util::toHandle<KBDLLHOOKSTRUCT *>(lParam);
         const bool altDown = (keyboardHook->flags & LLKHF_ALTDOWN) != 0;
+        const bool keyDown = (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN);
+        const bool keyUp = (wParam == WM_KEYUP || wParam == WM_SYSKEYUP);
 
         if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB && altDown &&
             wParam == WM_SYSKEYDOWN)
@@ -73,6 +75,27 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
                 Qt::QueuedConnection);
 
             return 1;
+        }
+
+        if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB &&
+            altDown)
+        {
+            const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            QMetaObject::invokeMethod(
+                Batab::getUI()->getAppSwitcher(),
+                shiftDown ? "cycleSelectionBackward" : "cycleSelection",
+                Qt::QueuedConnection);
+
+            return 1;
+        }
+
+        if (s_switcherOpen && keyUp &&
+            (keyboardHook->vkCode == VK_LMENU ||
+             keyboardHook->vkCode == VK_RMENU))
+        {
+            s_switcherOpen = false;
+            QMetaObject::invokeMethod(Batab::getUI()->getAppSwitcher(),
+                                      "altReleased", Qt::QueuedConnection);
         }
     }
 

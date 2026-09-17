@@ -24,18 +24,8 @@ public:
     bool eventFilter(QObject *watched, QEvent *event) override;
 
 public slots:
-    void removeQueuedAppToClose(int slot)
-    {
-        for (int row = 0; row < m_listModel->rowCount(); ++row)
-        {
-            auto *item = m_listModel->item(row);
-            if (item && item->data(Constants::ROLE_SLOT_INDEX).toInt() == slot)
-            {
-                m_listModel->removeRow(row);
-                break;
-            }
-        }
-    }
+    void removeQueuedAppToClose(int slot);
+    void altReleased();
 
 private slots:
     void onTextChanged();

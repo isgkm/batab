@@ -359,6 +359,28 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
+void AppSwitcher::removeQueuedAppToClose(int slot)
+{
+    for (int row = 0; row < m_listModel->rowCount(); ++row)
+    {
+        auto *item = m_listModel->item(row);
+        if (item && item->data(Constants::ROLE_SLOT_INDEX).toInt() == slot)
+        {
+            m_listModel->removeRow(row);
+            break;
+        }
+    }
+}
+
+void AppSwitcher::altReleased()
+{
+    if (!m_hasNavigated)
+    {
+        return;
+    }
+    activateSelectionAndHide();
+}
+
 void AppSwitcher::handleAppReorder(QDropEvent *event)
 {
     event->setDropAction(Qt::CopyAction);
