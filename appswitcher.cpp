@@ -10,17 +10,16 @@
 
 #include <QMenu>
 #include <QTimer>
+
 #include <windows.h>
 
-AppSwitcher::AppSwitcher(QWidget *parent)
-    : QWidget(parent)
-    , m_ui(new Ui::AppSwitcher)
-    , m_listModel(new QStandardItemModel(this))
-    , m_selectionCommitTimer(new QTimer(this))
-    , m_iconDelegate(new IndexedIconDelegate(this))
-    , m_slotInputTimer(new QTimer(this))
-    , m_customItemContextMenu(new QMenu(this))
-{
+AppSwitcher::AppSwitcher(QWidget* parent)
+    : QWidget(parent), m_ui(new Ui::AppSwitcher),
+      m_listModel(new QStandardItemModel(this)),
+      m_selectionCommitTimer(new QTimer(this)),
+      m_iconDelegate(new IndexedIconDelegate(this)),
+      m_slotInputTimer(new QTimer(this)),
+      m_customItemContextMenu(new QMenu(this)) {
     m_ui->setupUi(this);
 
     m_ui->LV_openApps->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -52,8 +51,7 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     m_slotInputTimer->setSingleShot(true);
     QObject::connect(m_slotInputTimer, &QTimer::timeout, this, [this]() {
-        if (!m_pendingSlotDigits.isEmpty())
-        {
+        if (!m_pendingSlotDigits.isEmpty()) {
             focusAppAtSlot(m_pendingSlotDigits.toInt() - 1);
             m_pendingSlotDigits.clear();
         }
@@ -61,22 +59,20 @@ AppSwitcher::AppSwitcher(QWidget *parent)
 
     QObject::connect(qApp, &QGuiApplication::applicationStateChanged, this,
                      [this](Qt::ApplicationState state) {
-                         if (state == Qt::ApplicationInactive && isVisible())
-                         {
+                         if (state == Qt::ApplicationInactive && isVisible()) {
                              hide();
                          }
                      });
 
-    QObject::connect(m_ui->LV_openApps->selectionModel(),
-                     &QItemSelectionModel::currentChanged, this, [this]() {
-                         m_hasNavigated = true;
-                         if (m_timerShouldStart)
-                         {
-                             m_selectionCommitTimer->start(
-                                 Settings::getInstance()
-                                     .selectionCommitTimeoutMs());
-                         }
-                     });
+    QObject::connect(
+        m_ui->LV_openApps->selectionModel(),
+        &QItemSelectionModel::currentChanged, this, [this]() {
+            m_hasNavigated = true;
+            if (m_timerShouldStart) {
+                m_selectionCommitTimer->start(
+                    Settings::getInstance().selectionCommitTimeoutMs());
+            }
+        });
 
     QObject::connect(m_ui->LV_openApps, &QListView::clicked,
                      &Util::focusWindowAtIndex);
@@ -92,20 +88,16 @@ AppSwitcher::AppSwitcher(QWidget *parent)
                      &AppSwitcher::removeQueuedAppToClose);
 }
 
-AppSwitcher::~AppSwitcher()
-{
+AppSwitcher::~AppSwitcher() {
     delete m_ui;
 }
 
-void AppSwitcher::onTextChanged()
-{
+void AppSwitcher::onTextChanged() {
     const auto searchQuery = m_ui->PTE_appSearch->toPlainText().trimmed();
 
-    for (int row = 0; row < m_listModel->rowCount(); ++row)
-    {
-        const QStandardItem *item = m_listModel->item(row);
-        if (!item)
-        {
+    for (int row = 0; row < m_listModel->rowCount(); ++row) {
+        const QStandardItem* item = m_listModel->item(row);
+        if (!item) {
             continue;
         }
 
@@ -118,36 +110,30 @@ void AppSwitcher::onTextChanged()
 
     int matchCount{0};
     int lastMatchingRow{-1};
-    for (int row = 0; row < m_listModel->rowCount(); ++row)
-    {
-        if (!m_ui->LV_openApps->isRowHidden(row))
-        {
+    for (int row = 0; row < m_listModel->rowCount(); ++row) {
+        if (!m_ui->LV_openApps->isRowHidden(row)) {
             ++matchCount;
             lastMatchingRow = row;
         }
     }
 
-    if (matchCount == 1)
-    {
+    if (matchCount == 1) {
         const QModelIndex onlyMatch = m_listModel->index(lastMatchingRow, 0);
         m_ui->LV_openApps->setCurrentIndex(onlyMatch);
         m_hasNavigated = true;
     }
 }
 
-void AppSwitcher::customContextMenuRequested(const QPoint &pos)
-{
+void AppSwitcher::customContextMenuRequested(const QPoint& pos) {
     const auto index = m_ui->LV_openApps->indexAt(pos);
 
-    if (!index.isValid())
-    {
+    if (!index.isValid()) {
         return;
     }
 
     const auto data = index.data(Constants::ROLE_INTERNAL_LIST_DATA);
 
-    if (data.isValid() && data.canConvert<WindowDetailsInternal>())
-    {
+    if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
         const auto idata = data.value<WindowDetailsInternal>();
 
         const auto appExePath = Util::getFullProcessPath(idata.processId);
@@ -164,31 +150,26 @@ void AppSwitcher::customContextMenuRequested(const QPoint &pos)
         m_actionTerminateApp->setText(tr("Terminate %1").arg(elidedText));
         m_actionCloseApp->setText(tr("Close %1").arg(elidedText));
 
-        const auto *selected = m_customItemContextMenu->exec(mapToGlobal(pos));
+        const auto* selected = m_customItemContextMenu->exec(mapToGlobal(pos));
 
-        if (selected == m_actionAddAppRuleByName)
-        {
+        if (selected == m_actionAddAppRuleByName) {
             qDebug() << "add rule by name selected: ";
         }
-        else if (selected == m_actionAddAppRuleByPath)
-        {
+        else if (selected == m_actionAddAppRuleByPath) {
             qDebug() << "add rule by path selected";
         }
-        else if (selected == m_actionTerminateApp)
-        {
+        else if (selected == m_actionTerminateApp) {
             qDebug() << "Terminating hWnd: " << idata.hWnd;
             Util::terminateAppWithHWND(idata.hWnd);
         }
-        else if (selected == m_actionCloseApp)
-        {
+        else if (selected == m_actionCloseApp) {
             qDebug() << "Closing hWnd: " << idata.hWnd;
             Util::closeAppWithHWND(idata.hWnd);
         }
     }
 }
 
-void AppSwitcher::showEvent(QShowEvent *event)
-{
+void AppSwitcher::showEvent(QShowEvent* event) {
     m_listModel->clear();
 
     const auto ordered = TrackedWindows::getInstance().getOrderedWindows();
@@ -197,22 +178,19 @@ void AppSwitcher::showEvent(QShowEvent *event)
     m_listModel->setRowCount(static_cast<int>(ordered.size()));
 
     int row{};
-    for (HWND hWnd : ordered)
-    {
-        if (!hWnd)
-        {
+    for (HWND hWnd : ordered) {
+        if (!hWnd) {
             continue;
         }
 
         const auto it = windows.constFind(hWnd);
-        if (it == windows.constEnd())
-        {
+        if (it == windows.constEnd()) {
             continue;
         }
 
-        const WindowDetails &wDetails = it.value();
+        const WindowDetails& wDetails = it.value();
 
-        auto *item = new QStandardItem();
+        auto* item = new QStandardItem();
 
         item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled |
                        Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled);
@@ -233,14 +211,32 @@ void AppSwitcher::showEvent(QShowEvent *event)
         m_listModel->setItem(row, item);
         ++row;
     }
-
     m_listModel->setRowCount(row);
+
+    const auto mru = TrackedWindows::getInstance().getMRUOrder();
+    if (mru.size() >= 2) {
+        HWND target =
+            mru.at(1);  // MRU[0] is the current app; target the one before it
+        for (int row = 0; row < m_listModel->rowCount(); ++row) {
+            const auto* item = m_listModel->item(row);
+            if (!item) {
+                continue;
+            }
+
+            const auto data = item->data(Constants::ROLE_INTERNAL_LIST_DATA);
+            if (data.canConvert<WindowDetailsInternal>() &&
+                data.value<WindowDetailsInternal>().hWnd == target)
+            {
+                m_ui->LV_openApps->setCurrentIndex(m_listModel->index(row, 0));
+                break;
+            }
+        }
+    }
 
     m_ui->LV_openApps->setFocus();
     m_hasNavigated = false;
     m_timerShouldStart = false;
-    if (m_selectionCommitTimer->isActive())
-    {
+    if (m_selectionCommitTimer->isActive()) {
         m_selectionCommitTimer->stop();
     }
 
@@ -249,31 +245,28 @@ void AppSwitcher::showEvent(QShowEvent *event)
     QWidget::showEvent(event);
 }
 
-void AppSwitcher::hideEvent(QHideEvent *event)
-{
+void AppSwitcher::hideEvent(QHideEvent* event) {
     m_selectionCommitTimer->stop();
     qApp->removeEventFilter(this);
     WinProcs::setSwitcherOpen(false);
 
-    if (!m_ui->PTE_appSearch->toPlainText().isEmpty())
-    {
+    if (!m_ui->PTE_appSearch->toPlainText().isEmpty()) {
         m_ui->PTE_appSearch->clear();
     }
 
     QWidget::hideEvent(event);
 }
 
-bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
-{
-    if (watched == m_ui->LV_openApps->viewport() && event->type() == QEvent::Drop)
+bool AppSwitcher::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == m_ui->LV_openApps->viewport() &&
+        event->type() == QEvent::Drop)
     {
-        handleAppReorder(dynamic_cast<QDropEvent *>(event));
+        handleAppReorder(dynamic_cast<QDropEvent*>(event));
         return true;
     }
 
-    if (event->type() == QEvent::KeyPress)
-    {
-        auto *keyEvent = dynamic_cast<QKeyEvent *>(event);
+    if (event->type() == QEvent::KeyPress) {
+        auto* keyEvent = dynamic_cast<QKeyEvent*>(event);
         const int key = keyEvent->key();
 
         if (key == Qt::Key_Tab || key == Qt::Key_Backtab ||
@@ -285,24 +278,20 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
                 m_timerShouldStart = true;
                 cycleSelectionBackward();
             }
-            else
-            {
+            else {
                 m_timerShouldStart = true;
                 cycleSelection();
             }
             return true;
         }
 
-        if (key == Qt::Key_Return || key == Qt::Key_Enter)
-        {
+        if (key == Qt::Key_Return || key == Qt::Key_Enter) {
             activateSelectionAndHide();
             return true;
         }
 
-        if (key == Qt::Key_Escape)
-        {
-            if (m_ui->PTE_appSearch->hasFocus())
-            {
+        if (key == Qt::Key_Escape) {
+            if (m_ui->PTE_appSearch->hasFocus()) {
                 m_ui->PTE_appSearch->clear();
                 m_ui->PTE_appSearch->clearFocus();
                 return true;
@@ -312,18 +301,15 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
             return true;
         }
 
-        if (!m_ui->PTE_appSearch->hasFocus())
-        {
-            if (key == Qt::Key_0)
-            {
+        if (!m_ui->PTE_appSearch->hasFocus()) {
+            if (key == Qt::Key_0) {
                 focusAppAtSlot(9);
                 m_pendingSlotDigits.clear();
                 m_slotInputTimer->stop();
                 return true;
             }
 
-            if (key >= Qt::Key_1 && key <= Qt::Key_9)
-            {
+            if (key >= Qt::Key_1 && key <= Qt::Key_9) {
                 m_pendingSlotDigits += QChar('1' + (key - Qt::Key_1));
 
                 const int rowCount = m_listModel->rowCount();
@@ -336,16 +322,14 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
                     m_pendingSlotDigits.clear();
                     m_slotInputTimer->stop();
                 }
-                else
-                {
+                else {
                     m_slotInputTimer->start(500);
                 }
 
                 return true;
             }
 
-            if (key >= Qt::Key_A && key <= Qt::Key_Z)
-            {
+            if (key >= Qt::Key_A && key <= Qt::Key_Z) {
                 m_ui->PTE_appSearch->setFocus();
                 QTextCursor cursor = m_ui->PTE_appSearch->textCursor();
                 cursor.movePosition(QTextCursor::End);
@@ -359,34 +343,26 @@ bool AppSwitcher::eventFilter(QObject *watched, QEvent *event)
     return QWidget::eventFilter(watched, event);
 }
 
-void AppSwitcher::removeQueuedAppToClose(int slot)
-{
-    for (int row = 0; row < m_listModel->rowCount(); ++row)
-    {
-        auto *item = m_listModel->item(row);
-        if (item && item->data(Constants::ROLE_SLOT_INDEX).toInt() == slot)
-        {
+void AppSwitcher::removeQueuedAppToClose(int slot) {
+    for (int row = 0; row < m_listModel->rowCount(); ++row) {
+        auto* item = m_listModel->item(row);
+        if (item && item->data(Constants::ROLE_SLOT_INDEX).toInt() == slot) {
             m_listModel->removeRow(row);
             break;
         }
     }
 }
 
-void AppSwitcher::altReleased()
-{
-    if (!m_hasNavigated)
-    {
-        return;
+void AppSwitcher::altReleased(bool wasQuickTap) {
+    if (wasQuickTap || m_hasNavigated) {
+        activateSelectionAndHide();
     }
-    activateSelectionAndHide();
 }
 
-void AppSwitcher::handleAppReorder(QDropEvent *event)
-{
+void AppSwitcher::handleAppReorder(QDropEvent* event) {
     event->setDropAction(Qt::CopyAction);
     const QModelIndex fromIndex = m_ui->LV_openApps->currentIndex();
-    if (!fromIndex.isValid())
-    {
+    if (!fromIndex.isValid()) {
         return;
     }
 
@@ -396,42 +372,36 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
         targetIndex.isValid() ? targetIndex.row() : m_listModel->rowCount() - 1;
     const int fromRow = fromIndex.row();
 
-    if (targetIndex.isValid())
-    {
+    if (targetIndex.isValid()) {
         const QRect targetRect = m_ui->LV_openApps->visualRect(targetIndex);
         const bool droppedInLowerHalf =
             event->position().y() > targetRect.center().y();
-        if (droppedInLowerHalf)
-        {
+        if (droppedInLowerHalf) {
             ++toRow;
         }
     }
 
-    if (fromRow == toRow)
-    {
+    if (fromRow == toRow) {
         event->ignore();
         return;
     }
 
-    const QList<QStandardItem *> movedRow = m_listModel->takeRow(fromRow);
-    if (toRow > fromRow)
-    {
+    const QList<QStandardItem*> movedRow = m_listModel->takeRow(fromRow);
+    if (toRow > fromRow) {
         --toRow;
     }
     m_listModel->insertRow(toRow, movedRow);
 
     QVector<HWND> newOrder;
     newOrder.reserve(m_listModel->rowCount());
-    for (int row = 0; row < m_listModel->rowCount(); ++row)
-    {
+    for (int row = 0; row < m_listModel->rowCount(); ++row) {
         const auto data =
             m_listModel->item(row)->data(Constants::ROLE_INTERNAL_LIST_DATA);
         newOrder.push_back(data.value<WindowDetailsInternal>().hWnd);
     }
     TrackedWindows::getInstance().reorderSlots(newOrder);
 
-    for (int row = 0; row < m_listModel->rowCount(); ++row)
-    {
+    for (int row = 0; row < m_listModel->rowCount(); ++row) {
         m_listModel->item(row)->setData(row, Constants::ROLE_SLOT_INDEX);
     }
 
@@ -441,21 +411,17 @@ void AppSwitcher::handleAppReorder(QDropEvent *event)
     event->accept();
 }
 
-void AppSwitcher::focusAppAtSlot(int slot)
-{
-    const auto *model = m_ui->LV_openApps->model();
+void AppSwitcher::focusAppAtSlot(int slot) {
+    const auto* model = m_ui->LV_openApps->model();
 
-    for (int row = 0; row < model->rowCount(); ++row)
-    {
+    for (int row = 0; row < model->rowCount(); ++row) {
         const QModelIndex index = model->index(row, 0);
-        if (index.data(Constants::ROLE_SLOT_INDEX).toInt() != slot)
-        {
+        if (index.data(Constants::ROLE_SLOT_INDEX).toInt() != slot) {
             continue;
         }
 
         const QVariant data = index.data(Constants::ROLE_INTERNAL_LIST_DATA);
-        if (data.isValid() && data.canConvert<WindowDetailsInternal>())
-        {
+        if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
             const auto idata = data.value<WindowDetailsInternal>();
 
             Util::focusWindowWithHWND(idata.hWnd);
@@ -464,56 +430,36 @@ void AppSwitcher::focusAppAtSlot(int slot)
     }
 }
 
-void AppSwitcher::cycleSelection()
-{
-    auto *model = m_ui->LV_openApps->model();
+void AppSwitcher::cycleSelection() {
+    qDebug() << "[cycleSelection] entry - hasNavigated=" << m_hasNavigated
+             << "currentRow=" << m_ui->LV_openApps->currentIndex().row();
+    auto* model = m_ui->LV_openApps->model();
     const int rowCount = model->rowCount();
-    if (rowCount == 0)
-    {
+    if (rowCount == 0) {
         return;
     }
 
-    int nextRow{};
-    bool needsAdvance{true};
-
-    if (!m_hasNavigated)
-    {
-        const int currentRow = m_ui->LV_openApps->currentIndex().row();
-        if (currentRow >= 0 && !m_ui->LV_openApps->isRowHidden(currentRow))
-        {
-            nextRow = currentRow;
-            needsAdvance = false;
-        }
-        else
-        {
-            nextRow = -1;
-        }
-    }
-    else
-    {
-        nextRow = m_ui->LV_openApps->currentIndex().row();
+    int currentRow = m_ui->LV_openApps->currentIndex().row();
+    if (currentRow < 0) {
+        currentRow = -1;  // nothing selected yet - search will start from row 0
     }
 
-    if (needsAdvance)
-    {
-        bool found = false;
-        for (int i = 0; i < rowCount; ++i)
-        {
-            nextRow = (nextRow + 1) % rowCount;
-            if (!m_ui->LV_openApps->isRowHidden(nextRow))
-            {
-                found = true;
-                break;
-            }
+    int nextRow = currentRow;
+    bool found = false;
+    for (int i = 0; i < rowCount; ++i) {
+        nextRow = (nextRow + 1) % rowCount;
+        if (!m_ui->LV_openApps->isRowHidden(nextRow)) {
+            found = true;
+            break;
         }
-        if (!found)
-        {
-            return;
-        }
+    }
+    if (!found) {
+        return;
     }
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
     m_ui->LV_openApps->setFocus();
+    qDebug() << "[cycleSelection] setting row to" << nextRow;
     m_ui->LV_openApps->setCurrentIndex(nextIndex);
     m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);
@@ -521,50 +467,40 @@ void AppSwitcher::cycleSelection()
     m_hasNavigated = true;
 }
 
-void AppSwitcher::cycleSelectionBackward()
-{
-    auto *model = m_ui->LV_openApps->model();
+void AppSwitcher::cycleSelectionBackward() {
+    auto* model = m_ui->LV_openApps->model();
     const int rowCount = model->rowCount();
-    if (rowCount == 0)
-    {
+    if (rowCount == 0) {
         return;
     }
 
     int prevRow{};
     bool needsAdvance{true};
 
-    if (!m_hasNavigated)
-    {
+    if (!m_hasNavigated) {
         const int currentRow = m_ui->LV_openApps->currentIndex().row();
-        if (currentRow >= 0 && !m_ui->LV_openApps->isRowHidden(currentRow))
-        {
+        if (currentRow >= 0 && !m_ui->LV_openApps->isRowHidden(currentRow)) {
             prevRow = currentRow;
             needsAdvance = false;
         }
-        else
-        {
+        else {
             prevRow = 0;
         }
     }
-    else
-    {
+    else {
         prevRow = m_ui->LV_openApps->currentIndex().row();
     }
 
-    if (needsAdvance)
-    {
+    if (needsAdvance) {
         bool found{};
-        for (int i = 0; i < rowCount; ++i)
-        {
+        for (int i = 0; i < rowCount; ++i) {
             prevRow = (prevRow - 1 + rowCount) % rowCount;
-            if (!m_ui->LV_openApps->isRowHidden(prevRow))
-            {
+            if (!m_ui->LV_openApps->isRowHidden(prevRow)) {
                 found = true;
                 break;
             }
         }
-        if (!found)
-        {
+        if (!found) {
             return;
         }
     }
@@ -578,16 +514,13 @@ void AppSwitcher::cycleSelectionBackward()
     m_hasNavigated = true;
 }
 
-void AppSwitcher::activateSelectionAndHide()
-{
+void AppSwitcher::activateSelectionAndHide() {
     m_selectionCommitTimer->stop();
 
     const QModelIndex idx = m_ui->LV_openApps->currentIndex();
-    if (idx.isValid())
-    {
+    if (idx.isValid()) {
         const QVariant data = idx.data(Constants::ROLE_INTERNAL_LIST_DATA);
-        if (data.isValid() && data.canConvert<WindowDetailsInternal>())
-        {
+        if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
             Util::focusWindowWithHWND(data.value<WindowDetailsInternal>().hWnd);
         }
     }

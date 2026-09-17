@@ -4,16 +4,15 @@
 
 #include <QDebug>
 
-QDataStream &operator<<(QDataStream &out, const WindowDetailsInternal &idetails)
-{
+QDataStream& operator<<(QDataStream& out,
+                        const WindowDetailsInternal& idetails) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast, performance-no-int-to-ptr) - HWND is a pointer typedef; storing as a plain integer for serialization
     out << reinterpret_cast<quintptr>(idetails.hWnd) << idetails.title
         << static_cast<quint32>(idetails.processId);
     return out;
 }
 
-QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
-{
+QDataStream& operator>>(QDataStream& in, WindowDetailsInternal& idetails) {
     quintptr hwndValue{};
     quint32 processId{};
     in >> hwndValue >> idetails.title >> processId;
@@ -22,17 +21,14 @@ QDataStream &operator>>(QDataStream &in, WindowDetailsInternal &idetails)
     return in;
 }
 
-TrackedWindows &TrackedWindows::getInstance()
-{
+TrackedWindows& TrackedWindows::getInstance() {
     static TrackedWindows s_instance;
 
     return s_instance;
 }
 
-void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
-{
-    if (m_openWindows.contains(hWnd))
-    {
+void TrackedWindows::addWindow(HWND hWnd, const WindowDetails& windowDetails) {
+    if (m_openWindows.contains(hWnd)) {
         return;
     }
 
@@ -42,14 +38,12 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
     m_openWindows.insert(hWnd, windowDetails);
 
     int slot{};
-    if (!m_freeSlots.empty())
-    {
+    if (!m_freeSlots.empty()) {
         slot = m_freeSlots.firstKey();
         m_freeSlots.remove(slot);
         m_slots.replace(slot, hWnd);
     }
-    else
-    {
+    else {
         slot = static_cast<int>(m_slots.size());
         m_slots.push_back(hWnd);
     }
@@ -57,10 +51,8 @@ void TrackedWindows::addWindow(HWND hWnd, const WindowDetails &windowDetails)
     m_slotOf.insert(hWnd, slot);
 }
 
-bool TrackedWindows::removeWindow(HWND hWnd)
-{
-    if (!m_openWindows.contains(hWnd))
-    {
+bool TrackedWindows::removeWindow(HWND hWnd) {
+    if (!m_openWindows.contains(hWnd)) {
         return false;
     }
 
@@ -71,14 +63,12 @@ bool TrackedWindows::removeWindow(HWND hWnd)
     const int slot = m_slotOf.value(hWnd, -1);
     m_slotOf.remove(hWnd);
 
-    if (slot >= 0)
-    {
+    if (slot >= 0) {
         m_slots.replace(slot, nullptr);
         m_freeSlots.insert(slot, true);
     }
 
-    if (m_queuedSlotsToClose.contains(hWnd))
-    {
+    if (m_queuedSlotsToClose.contains(hWnd)) {
         m_queuedSlotsToClose.remove(hWnd);
         emit queuedAppActuallyClosed(slot);
     }
@@ -86,28 +76,28 @@ bool TrackedWindows::removeWindow(HWND hWnd)
     return true;
 }
 
-void TrackedWindows::updateWindowTitle(HWND hWnd, const QString &newTitle)
-{
+void TrackedWindows::updateWindowTitle(HWND hWnd, const QString& newTitle) {
     auto it = m_openWindows.find(hWnd);
-    if (it == m_openWindows.end())
-    {
+    if (it == m_openWindows.end()) {
         return;
     }
 
     it->title = newTitle;
 }
 
-void TrackedWindows::reorderSlots(const QVector<HWND> &newOrder)
-{
+void TrackedWindows::reorderSlots(const QVector<HWND>& newOrder) {
     m_slots = newOrder;
     m_slotOf.clear();
     m_freeSlots.clear();
-    for (int i = 0; i < m_slots.size(); ++i)
-    {
-        auto *val = m_slots.value(i);
-        if (val)
-        {
+    for (int i = 0; i < m_slots.size(); ++i) {
+        auto* val = m_slots.value(i);
+        if (val) {
             m_slotOf.insert(val, i);
         }
     }
+}
+
+void TrackedWindows::markWindowActivated(HWND hWnd) {
+    m_mruOrder.removeAll(hWnd);
+    m_mruOrder.prepend(hWnd);
 }

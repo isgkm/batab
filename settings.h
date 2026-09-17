@@ -4,12 +4,11 @@
 #include <QSettings>
 #include <QtClassHelperMacros>
 
-class Settings final
-{
-public:
+class Settings final {
+  public:
     Q_DISABLE_COPY_MOVE(Settings)
 
-    static Settings &getInstance();
+    static Settings& getInstance();
 
     [[nodiscard]] int selectionCommitTimeoutMs() const;
     void setSelectionCommitTimeoutMs(int timeMs);
@@ -20,7 +19,10 @@ public:
     [[nodiscard]] int hotCornerElapsedTimeMs() const;
     void setHotCornerElapsedTimeMs(int timeMs);
 
-private:
+    [[nodiscard]] int quickSwitchHoldThresholdMs() const;
+    void setQuickSwitchHoldThresholdMs(int timeMs);
+
+  private:
     Settings();
     ~Settings() = default;
 

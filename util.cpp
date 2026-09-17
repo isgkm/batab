@@ -3,21 +3,19 @@
 #include "constants.h"
 #include "trackedwindows.h"
 
-#include <dwmapi.h>
 #include <QDebug>
 #include <QFileInfo>
+
+#include <dwmapi.h>
 #include <windows.h>
 
 namespace {
-bool isRootAltTabCandidate(HWND hWnd)
-{
+bool isRootAltTabCandidate(HWND hWnd) {
     HWND hWndWalk = GetAncestor(hWnd, GA_ROOTOWNER);
     HWND hWndTry{};
 
-    while ((hWndTry = GetLastActivePopup(hWndWalk)) != hWndWalk)
-    {
-        if (IsWindowVisible(hWndTry))
-        {
+    while ((hWndTry = GetLastActivePopup(hWndWalk)) != hWndWalk) {
+        if (IsWindowVisible(hWndTry)) {
             break;
         }
 
@@ -28,26 +26,21 @@ bool isRootAltTabCandidate(HWND hWnd)
 }
 }  // namespace
 
-bool Util::isAltTabWindow(HWND hWnd)
-{
-    if (GetWindowTextLengthW(hWnd) == 0)
-    {
+bool Util::isAltTabWindow(HWND hWnd) {
+    if (GetWindowTextLengthW(hWnd) == 0) {
         return false;
     }
 
-    if (!IsWindowVisible(hWnd))
-    {
+    if (!IsWindowVisible(hWnd)) {
         return false;
     }
 
-    if (!isRootAltTabCandidate(hWnd))
-    {
+    if (!isRootAltTabCandidate(hWnd)) {
         return false;
     }
 
     const LONG exStyle = GetWindowLongW(hWnd, GWL_EXSTYLE);
-    if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW))
-    {
+    if ((exStyle & WS_EX_TOOLWINDOW) && !(exStyle & WS_EX_APPWINDOW)) {
         return false;
     }
 
@@ -55,16 +48,14 @@ bool Util::isAltTabWindow(HWND hWnd)
     const HRESULT result =
         DwmGetWindowAttribute(hWnd, DWMWA_CLOAKED, &cloaked, sizeof(cloaked));
 
-    if (result == S_OK && cloaked)
-    {
+    if (result == S_OK && cloaked) {
         return false;
     }
 
     return true;
 }
 
-bool Util::isSystemWindow(HWND hWnd)
-{
+bool Util::isSystemWindow(HWND hWnd) {
     DWORD processId{};
     GetWindowThreadProcessId(hWnd, &processId);
 
@@ -81,8 +72,7 @@ bool Util::isSystemWindow(HWND hWnd)
     return s_excludedExeNames.contains(exeName);
 }
 
-QIcon Util::getIconFromHWND(HWND hWnd)
-{
+QIcon Util::getIconFromHWND(HWND hWnd) {
     HICON hIcon{};
 
     auto result = SendMessageTimeoutW(
@@ -106,36 +96,31 @@ QIcon Util::getIconFromHWND(HWND hWnd)
     }
 
     HICON hIconOwned = CopyIcon(hIcon);
-    if (!hIconOwned)
-    {
+    if (!hIconOwned) {
         return {};
     }
 
-    auto cleanup = qScopeGuard([hIconOwned] {
-        DestroyIcon(hIconOwned);
-    });
+    auto cleanup = qScopeGuard([hIconOwned] { DestroyIcon(hIconOwned); });
 
     return {QPixmap::fromImage(QImage::fromHICON(hIconOwned))};
 }
 
-void Util::focusWindowWithHWND(HWND hWnd)
-{
-    if (hWnd == nullptr || !IsWindow(hWnd))
-    {
+void Util::focusWindowWithHWND(HWND hWnd) {
+    if (hWnd == nullptr || !IsWindow(hWnd)) {
         return;
     }
 
     if (IsIconic(hWnd)) {
         ShowWindow(hWnd, SW_RESTORE);
-    } else {
+    }
+    else {
         ShowWindow(hWnd, SW_SHOW);
     }
 
     SetForegroundWindow(hWnd);
 }
 
-void Util::focusWindowAtIndex(const QModelIndex &listIndex)
-{
+void Util::focusWindowAtIndex(const QModelIndex& listIndex) {
     auto data = listIndex.data(Constants::ROLE_INTERNAL_LIST_DATA);
     if (data.isValid() && data.canConvert<WindowDetailsInternal>()) {
         auto idata = data.value<WindowDetailsInternal>();
@@ -144,19 +129,15 @@ void Util::focusWindowAtIndex(const QModelIndex &listIndex)
     }
 }
 
-QString Util::getFullProcessPath(DWORD processId)
-{
+QString Util::getFullProcessPath(DWORD processId) {
     HANDLE handle =
         OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
 
-    if (!handle)
-    {
+    if (!handle) {
         return {};
     }
 
-    auto cleanup = qScopeGuard([handle] {
-        CloseHandle(handle);
-    });
+    auto cleanup = qScopeGuard([handle] { CloseHandle(handle); });
 
     DWORD bufferSize = 512;
     std::wstring buffer(bufferSize, L'\0');
@@ -170,25 +151,21 @@ QString Util::getFullProcessPath(DWORD processId)
                                    static_cast<qsizetype>(bufferSize));
 }
 
-QString Util::getAppNameFromTitle(const QString &appTitle)
-{
+QString Util::getAppNameFromTitle(const QString& appTitle) {
     static const QVector<QString> s_separators{
         QStringLiteral(" - "), QStringLiteral(" – "), QStringLiteral(" — ")};
 
     qsizetype bestIndex{-1};
     QStringView matchedSep{};
-    for (const auto &sep : s_separators)
-    {
+    for (const auto& sep : s_separators) {
         const auto idx = appTitle.lastIndexOf(sep);
-        if (idx > bestIndex)
-        {
+        if (idx > bestIndex) {
             bestIndex = idx;
             matchedSep = sep;
         }
     }
 
-    if (bestIndex < 0)
-    {
+    if (bestIndex < 0) {
         return appTitle;
     }
 
@@ -198,10 +175,8 @@ QString Util::getAppNameFromTitle(const QString &appTitle)
     return candidate.isEmpty() ? appTitle : candidate;
 }
 
-void Util::closeAppWithHWND(HWND hWnd)
-{
-    if (hWnd == nullptr)
-    {
+void Util::closeAppWithHWND(HWND hWnd) {
+    if (hWnd == nullptr) {
         return;
     }
 
@@ -210,29 +185,23 @@ void Util::closeAppWithHWND(HWND hWnd)
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
 }
 
-void Util::terminateAppWithHWND(HWND hWnd)
-{
-    if (hWnd == nullptr)
-    {
+void Util::terminateAppWithHWND(HWND hWnd) {
+    if (hWnd == nullptr) {
         return;
     }
 
     DWORD processId = 0;
     GetWindowThreadProcessId(hWnd, &processId);
-    if (processId == 0)
-    {
+    if (processId == 0) {
         return;
     }
 
     HANDLE handle = OpenProcess(PROCESS_TERMINATE, FALSE, processId);
-    if (!handle)
-    {
+    if (!handle) {
         return;
     }
 
-    auto cleanup = qScopeGuard([handle] {
-        CloseHandle(handle);
-    });
+    auto cleanup = qScopeGuard([handle] { CloseHandle(handle); });
 
     TrackedWindows::getInstance().queueSlotToTrack(hWnd);
 

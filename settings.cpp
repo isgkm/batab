@@ -4,50 +4,53 @@
 
 Settings::Settings()
     : m_settings(QSettings::IniFormat, QSettings::UserScope, "Batab",
-                 "settings")
-{
+                 "settings") {
 }
 
-Settings &Settings::getInstance()
-{
+Settings& Settings::getInstance() {
     static Settings s_instance;
 
     return s_instance;
 }
 
-int Settings::selectionCommitTimeoutMs() const
-{
+int Settings::selectionCommitTimeoutMs() const {
     return m_settings
         .value(Constants::SETTINGS_KEY_SELECTION_COMMIT_TIMEOUT_MS, 1000)
         .toInt();
 }
 
-void Settings::setSelectionCommitTimeoutMs(int timeMs)
-{
+void Settings::setSelectionCommitTimeoutMs(int timeMs) {
     m_settings.setValue(Constants::SETTINGS_KEY_SELECTION_COMMIT_TIMEOUT_MS,
                         timeMs);
 }
 
-int Settings::hotCornerSize() const
-{
+int Settings::hotCornerSize() const {
     return m_settings.value(Constants::SETTINGS_KEY_HOT_CORNER_SIZE, 32)
         .toInt();
 };
 
-void Settings::setHotCornerSize(int sizePx)
-{
+void Settings::setHotCornerSize(int sizePx) {
     m_settings.setValue(Constants::SETTINGS_KEY_HOT_CORNER_SIZE, sizePx);
 }
 
-int Settings::hotCornerElapsedTimeMs() const
-{
+int Settings::hotCornerElapsedTimeMs() const {
     return m_settings
         .value(Constants::SETTINGS_KEY_HOT_CORNER_ELAPSED_TIME_MS, 1000)
         .toInt();
 }
 
-void Settings::setHotCornerElapsedTimeMs(int timeMs)
-{
+void Settings::setHotCornerElapsedTimeMs(int timeMs) {
     m_settings.setValue(Constants::SETTINGS_KEY_HOT_CORNER_ELAPSED_TIME_MS,
+                        timeMs);
+}
+
+int Settings::quickSwitchHoldThresholdMs() const {
+    return m_settings
+        .value(Constants::SETTINGS_KEY_QUICK_SWITCH_HOLD_THRESHOLD_MS, 100)
+        .toInt();
+}
+
+void Settings::setQuickSwitchHoldThresholdMs(int timeMs) {
+    m_settings.setValue(Constants::SETTINGS_KEY_QUICK_SWITCH_HOLD_THRESHOLD_MS,
                         timeMs);
 }

@@ -4,10 +4,9 @@
 
 #include <QPainter>
 
-void IndexedIconDelegate::paint(QPainter *painter,
-                                const QStyleOptionViewItem &option,
-                                const QModelIndex &index) const
-{
+void IndexedIconDelegate::paint(QPainter* painter,
+                                const QStyleOptionViewItem& option,
+                                const QModelIndex& index) const {
     QStyleOptionViewItem opt(option);
     initStyleOption(&opt, index);
 
@@ -16,8 +15,7 @@ void IndexedIconDelegate::paint(QPainter *painter,
     const auto mouseHover = (opt.state & QStyle::State_MouseOver);
     const auto tabFocused = (opt.state & QStyle::State_Selected);
 
-    if (mouseHover || tabFocused)
-    {
+    if (mouseHover || tabFocused) {
         painter->fillRect(opt.rect, opt.palette.button().color());
     }
 
@@ -51,9 +49,8 @@ void IndexedIconDelegate::paint(QPainter *painter,
     painter->restore();
 }
 
-QSize IndexedIconDelegate::sizeHint(const QStyleOptionViewItem &option,
-                                    const QModelIndex &index) const
-{
+QSize IndexedIconDelegate::sizeHint(const QStyleOptionViewItem& option,
+                                    const QModelIndex& index) const {
     QSize size = QStyledItemDelegate::sizeHint(option, index);
     size.setWidth(option.rect.width());
 

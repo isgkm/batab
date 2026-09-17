@@ -9,14 +9,12 @@
 #include <QMessageBox>
 #include <QTimer>
 
-Batab *Batab::s_ui = nullptr;
+Batab* Batab::s_ui = nullptr;
 
-Batab::Batab(QWidget *parent)
-    : QMainWindow(parent)
-    , m_ui(new Ui::Batab)
-    , m_appSwitcher(new AppSwitcher())
-    , m_hotCornerCheckTimer(new QTimer(this))
-{
+Batab::Batab(QWidget* parent)
+    : QMainWindow(parent), m_ui(new Ui::Batab),
+      m_appSwitcher(new AppSwitcher()),
+      m_hotCornerCheckTimer(new QTimer(this)) {
     m_ui->setupUi(this);
     s_ui = this;
 
@@ -41,8 +39,7 @@ Batab::Batab(QWidget *parent)
     m_trayIcon->show();
 }
 
-Batab::~Batab()
-{
+Batab::~Batab() {
     WinProcs::unregisterLLKHook();
     WinProcs::unregisterWEHooks();
 
@@ -51,8 +48,7 @@ Batab::~Batab()
     delete m_ui;
 }
 
-void Batab::createActions()
-{
+void Batab::createActions() {
     m_minimizeAction = new QAction(tr("&Minimize"), this);
     connect(m_minimizeAction, &QAction::triggered, this, &QWidget::hide);
 
@@ -67,8 +63,7 @@ void Batab::createActions()
     connect(m_quitAction, &QAction::triggered, qApp, &QCoreApplication::quit);
 }
 
-void Batab::createTrayIcon()
-{
+void Batab::createTrayIcon() {
     m_trayIconMenu = new QMenu(this);
     m_trayIconMenu->addAction(m_minimizeAction);
     m_trayIconMenu->addAction(m_maximizeAction);
@@ -80,11 +75,9 @@ void Batab::createTrayIcon()
     m_trayIcon->setContextMenu(m_trayIconMenu);
 }
 
-void Batab::checkHotCorner()
-{
+void Batab::checkHotCorner() {
     POINT cursorPos{};
-    if (!GetCursorPos(&cursorPos))
-    {
+    if (!GetCursorPos(&cursorPos)) {
         return;
     }
 
@@ -92,10 +85,8 @@ void Batab::checkHotCorner()
     const bool inTopLeftCorner =
         cursorPos.x <= cornerSize && cursorPos.y <= cornerSize;
 
-    if (inTopLeftCorner)
-    {
-        if (!m_hotCornerTimerRunning)
-        {
+    if (inTopLeftCorner) {
+        if (!m_hotCornerTimerRunning) {
             m_hotCornerTimerRunning = true;
             m_hotCornerElapsedTime.start();
         }
@@ -108,8 +99,7 @@ void Batab::checkHotCorner()
             m_hotCornerTimerRunning = false;
         }
     }
-    else
-    {
+    else {
         m_hotCornerTimerRunning = false;
     }
 }

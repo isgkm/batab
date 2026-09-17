@@ -1,7 +1,6 @@
 #ifndef APPSWITCHER_H
 #define APPSWITCHER_H
 
-#include "constants.h"
 #include "indexedicondelegate.h"
 
 #include <QStandardItemModel>
@@ -11,49 +10,48 @@ namespace Ui {
 class AppSwitcher;
 }  // namespace Ui
 
-class AppSwitcher final : public QWidget
-{
+class AppSwitcher final : public QWidget {
     Q_OBJECT
 
-public:
-    explicit AppSwitcher(QWidget *parent = nullptr);
+  public:
+    explicit AppSwitcher(QWidget* parent = nullptr);
     ~AppSwitcher() override;
 
     Q_DISABLE_COPY_MOVE(AppSwitcher)
 
-    bool eventFilter(QObject *watched, QEvent *event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
-public slots:
+  public slots:
     void removeQueuedAppToClose(int slot);
-    void altReleased();
+    void altReleased(bool wasQuickTap);
 
-private slots:
+  private slots:
     void onTextChanged();
-    void customContextMenuRequested(const QPoint &pos);
+    void customContextMenuRequested(const QPoint& pos);
 
-protected:
-    void showEvent(QShowEvent *event) override;
-    void hideEvent(QHideEvent *event) override;
+  protected:
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
 
-private:
-    Ui::AppSwitcher *m_ui;
-    QStandardItemModel *m_listModel;
-    QTimer *m_selectionCommitTimer;
-    IndexedIconDelegate *m_iconDelegate;
+  private:
+    Ui::AppSwitcher* m_ui;
+    QStandardItemModel* m_listModel;
+    QTimer* m_selectionCommitTimer;
+    IndexedIconDelegate* m_iconDelegate;
 
     QString m_pendingSlotDigits;
-    QTimer *m_slotInputTimer;
+    QTimer* m_slotInputTimer;
 
-    QMenu *m_customItemContextMenu;
-    QAction *m_actionCloseApp;
-    QAction *m_actionTerminateApp;
-    QAction *m_actionAddAppRuleByName;
-    QAction *m_actionAddAppRuleByPath;
+    QMenu* m_customItemContextMenu;
+    QAction* m_actionCloseApp;
+    QAction* m_actionTerminateApp;
+    QAction* m_actionAddAppRuleByName;
+    QAction* m_actionAddAppRuleByPath;
 
     bool m_timerShouldStart{};
     bool m_hasNavigated{};
 
-    void handleAppReorder(QDropEvent *event);
+    void handleAppReorder(QDropEvent* event);
     void focusAppAtSlot(int slot);
 
     Q_INVOKABLE void cycleSelection();
@@ -61,4 +59,4 @@ private:
     Q_INVOKABLE void activateSelectionAndHide();
 };
 
-#endif // APPSWITCHER_H
+#endif  // APPSWITCHER_H

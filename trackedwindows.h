@@ -9,75 +9,67 @@
 #include <QObject>
 #include <QSet>
 #include <QString>
+
 #include <Windows.h>
 
-struct WindowDetails
-{
+struct WindowDetails {
     QString title;
     DWORD processId;
     QIcon icon;
 };
 
-struct WindowDetailsInternal
-{
+struct WindowDetailsInternal {
     HWND hWnd{};
     QString title{};
     DWORD processId{};
 
-    friend QDataStream &operator<<(QDataStream &out,
-                                   const WindowDetailsInternal &idetails);
-    friend QDataStream &operator>>(QDataStream &in,
-                                   WindowDetailsInternal &idetails);
+    friend QDataStream& operator<<(QDataStream& out,
+                                   const WindowDetailsInternal& idetails);
+    friend QDataStream& operator>>(QDataStream& in,
+                                   WindowDetailsInternal& idetails);
 };
 
 Q_DECLARE_METATYPE(WindowDetailsInternal);
 
-class TrackedWindows final : public QObject
-{
+class TrackedWindows final : public QObject {
     Q_OBJECT
 
-public:
+  public:
     Q_DISABLE_COPY_MOVE(TrackedWindows)
 
-    static TrackedWindows &getInstance();
+    static TrackedWindows& getInstance();
 
-    void addWindow(HWND hWnd, const WindowDetails &windowDetails);
+    void addWindow(HWND hWnd, const WindowDetails& windowDetails);
     bool removeWindow(HWND hWnd);
-    void updateWindowTitle(HWND hWnd, const QString &newTitle);
-    void reorderSlots(const QVector<HWND> &newOrder);
-    void queueSlotToTrack(HWND hWnd)
-    {
-        m_queuedSlotsToClose.insert(hWnd);
-    }
+    void updateWindowTitle(HWND hWnd, const QString& newTitle);
+    void reorderSlots(const QVector<HWND>& newOrder);
+    void queueSlotToTrack(HWND hWnd) { m_queuedSlotsToClose.insert(hWnd); }
 
-    [[nodiscard]] QHash<HWND, WindowDetails> getWindows() const
-    {
+    void markWindowActivated(HWND hWnd);
+    [[nodiscard]] QVector<HWND> getMRUOrder() const { return m_mruOrder; }
+
+    [[nodiscard]] QHash<HWND, WindowDetails> getWindows() const {
         return m_openWindows;
     };
 
-    [[nodiscard]] int getWindowOrder(HWND hWnd) const
-    {
+    [[nodiscard]] int getWindowOrder(HWND hWnd) const {
         return m_slotOf.value(hWnd, -1);
     }
 
-    [[nodiscard]] QVector<HWND> getOrderedWindows() const
-    {
-        return m_slots;
-    }
+    [[nodiscard]] QVector<HWND> getOrderedWindows() const { return m_slots; }
 
-    [[nodiscard]] auto getWindowCount() const
-    {
-        return m_openWindows.size();
-    }
+    [[nodiscard]] auto getWindowCount() const { return m_openWindows.size(); }
 
-signals:
+  signals:
     void queuedAppActuallyClosed(int slot);
 
-private:
+  private:
     TrackedWindows() = default;
     ~TrackedWindows() override = default;
 
     QHash<HWND, WindowDetails> m_openWindows;
+
+    QVector<HWND> m_mruOrder;
 
     QSet<HWND> m_queuedSlotsToClose;
 
@@ -86,4 +78,4 @@ private:
     QMap<int, bool> m_freeSlots;
 };
 
-#endif // TRACKEDWINDOWS_H
+#endif  // TRACKEDWINDOWS_H
