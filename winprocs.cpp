@@ -81,8 +81,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
         if (s_switcherOpen && keyDown && keyboardHook->vkCode == VK_TAB &&
             altDown)
         {
-            qDebug() << "[CYCLE] vkCode=" << keyboardHook->vkCode
-                     << "wParam=" << wParam;
             const bool shiftDown = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
             QMetaObject::invokeMethod(
                 Batab::getUI()->getAppSwitcher(),
@@ -96,9 +94,6 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
             (keyboardHook->vkCode == VK_LMENU ||
              keyboardHook->vkCode == VK_RMENU))
         {
-            qDebug() << "[RELEASE] vkCode=" << keyboardHook->vkCode
-                     << "wParam=" << wParam
-                     << "elapsed=" << s_switcherOpenTimer.elapsed();
             s_switcherOpen = false;
             const bool wasQuickTap =
                 s_switcherOpenTimer.elapsed() <

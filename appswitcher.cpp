@@ -430,8 +430,6 @@ void AppSwitcher::focusAppAtSlot(int slot) {
 }
 
 void AppSwitcher::cycleSelection() {
-    qDebug() << "[cycleSelection] entry - hasNavigated=" << m_hasNavigated
-             << "currentRow=" << m_ui->LV_openApps->currentIndex().row();
     auto* model = m_ui->LV_openApps->model();
     const int rowCount = model->rowCount();
     if (rowCount == 0) {
@@ -458,7 +456,6 @@ void AppSwitcher::cycleSelection() {
 
     const QModelIndex nextIndex = model->index(nextRow, 0);
     m_ui->LV_openApps->setFocus();
-    qDebug() << "[cycleSelection] setting row to" << nextRow;
     m_ui->LV_openApps->setCurrentIndex(nextIndex);
     m_ui->LV_openApps->selectionModel()->select(
         nextIndex, QItemSelectionModel::ClearAndSelect);

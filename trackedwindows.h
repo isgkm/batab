@@ -1,7 +1,6 @@
 #ifndef TRACKEDWINDOWS_H
 #define TRACKEDWINDOWS_H
 
-#include <QDebug>
 #include <QHash>
 #include <QIcon>
 #include <QList>
