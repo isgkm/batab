@@ -35,6 +35,7 @@ class WinProcs final {
                                                    DWORD idEventThread,
                                                    DWORD dwmsEventTime);
 
+    // get notified of app focus change
     static void CALLBACK winForegroundAppChangedEventProc(
         HWINEVENTHOOK hWinEventHook, DWORD event, HWND hWnd, LONG idObject,
         LONG idChild, DWORD idEventThread, DWORD dwmsEventTime);

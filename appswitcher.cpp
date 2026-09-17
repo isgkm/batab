@@ -215,8 +215,7 @@ void AppSwitcher::showEvent(QShowEvent* event) {
 
     const auto mru = TrackedWindows::getInstance().getMRUOrder();
     if (mru.size() >= 2) {
-        HWND target =
-            mru.at(1);  // MRU[0] is the current app; target the one before it
+        HWND target = mru.at(1);
         for (int row = 0; row < m_listModel->rowCount(); ++row) {
             const auto* item = m_listModel->item(row);
             if (!item) {
@@ -441,7 +440,7 @@ void AppSwitcher::cycleSelection() {
 
     int currentRow = m_ui->LV_openApps->currentIndex().row();
     if (currentRow < 0) {
-        currentRow = -1;  // nothing selected yet - search will start from row 0
+        currentRow = -1;
     }
 
     int nextRow = currentRow;

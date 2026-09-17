@@ -56,9 +56,7 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
         if (!s_switcherOpen && keyboardHook->vkCode == VK_TAB && altDown &&
             wParam == WM_SYSKEYDOWN)
         {
-            qDebug() << "[OPEN] vkCode=" << keyboardHook->vkCode
-                     << "wParam=" << wParam;
-            // qDebug() << "alt+tab detected";
+            qDebug() << "alt+tab detected";
             keybd_event(VK_CONTROL, 0, 0, 0);
             keybd_event(VK_CONTROL, 0, KEYEVENTF_KEYUP, 0);
 
@@ -106,17 +104,9 @@ LRESULT CALLBACK WinProcs::lowLevelKeyboardProc(int nCode, WPARAM wParam,
                 s_switcherOpenTimer.elapsed() <
                 Settings::getInstance().quickSwitchHoldThresholdMs();
 
-            // qDebug() << "wasQucikTap: " << wasQuickTap;
             QMetaObject::invokeMethod(Batab::getUI()->getAppSwitcher(),
                                       "altReleased", Qt::QueuedConnection,
                                       Q_ARG(bool, wasQuickTap));
-        }
-
-        // Add this catch-all too, temporarily, to see EVERYTHING while switcher is open
-        if (s_switcherOpen) {
-            qDebug() << "[ALL] vkCode=" << keyboardHook->vkCode
-                     << "wParam=" << wParam << "keyDown=" << keyDown
-                     << "keyUp=" << keyUp << "altDown=" << altDown;
         }
     }
 
