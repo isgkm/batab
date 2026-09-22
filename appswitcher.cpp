@@ -46,25 +46,25 @@ AppSwitcher::AppSwitcher(QWidget* parent)
 
     m_selectionCommitTimer->setSingleShot(true);
 
-    QObject::connect(m_selectionCommitTimer, &QTimer::timeout, this,
-                     &AppSwitcher::activateSelectionAndHide);
+    connect(m_selectionCommitTimer, &QTimer::timeout, this,
+            &AppSwitcher::activateSelectionAndHide);
 
     m_slotInputTimer->setSingleShot(true);
-    QObject::connect(m_slotInputTimer, &QTimer::timeout, this, [this]() {
+    connect(m_slotInputTimer, &QTimer::timeout, this, [this]() {
         if (!m_pendingSlotDigits.isEmpty()) {
             focusAppAtSlot(m_pendingSlotDigits.toInt() - 1);
             m_pendingSlotDigits.clear();
         }
     });
 
-    QObject::connect(qApp, &QGuiApplication::applicationStateChanged, this,
-                     [this](Qt::ApplicationState state) {
-                         if (state == Qt::ApplicationInactive && isVisible()) {
-                             hide();
-                         }
-                     });
+    connect(qApp, &QGuiApplication::applicationStateChanged, this,
+            [this](Qt::ApplicationState state) {
+                if (state == Qt::ApplicationInactive && isVisible()) {
+                    hide();
+                }
+            });
 
-    QObject::connect(
+    connect(
         m_ui->LV_openApps->selectionModel(),
         &QItemSelectionModel::currentChanged, this, [this]() {
             m_hasNavigated = true;
@@ -74,18 +74,17 @@ AppSwitcher::AppSwitcher(QWidget* parent)
             }
         });
 
-    QObject::connect(m_ui->LV_openApps, &QListView::clicked,
-                     &Util::focusWindowAtIndex);
+    connect(m_ui->LV_openApps, &QListView::clicked, &Util::focusWindowAtIndex);
 
-    QObject::connect(m_ui->LV_openApps, &QListView::customContextMenuRequested,
-                     this, &AppSwitcher::customContextMenuRequested);
+    connect(m_ui->LV_openApps, &QListView::customContextMenuRequested, this,
+            &AppSwitcher::customContextMenuRequested);
 
-    QObject::connect(m_ui->PTE_appSearch, &QPlainTextEdit::textChanged, this,
-                     &AppSwitcher::onTextChanged);
+    connect(m_ui->PTE_appSearch, &QPlainTextEdit::textChanged, this,
+            &AppSwitcher::onTextChanged);
 
-    QObject::connect(&TrackedWindows::getInstance(),
-                     &TrackedWindows::queuedAppActuallyClosed, this,
-                     &AppSwitcher::removeQueuedAppToClose);
+    connect(&TrackedWindows::getInstance(),
+            &TrackedWindows::queuedAppActuallyClosed, this,
+            &AppSwitcher::removeQueuedAppToClose);
 }
 
 AppSwitcher::~AppSwitcher() {
@@ -267,29 +266,33 @@ bool AppSwitcher::eventFilter(QObject* watched, QEvent* event) {
     if (event->type() == QEvent::KeyPress) {
         auto* keyEvent = dynamic_cast<QKeyEvent*>(event);
         const int key = keyEvent->key();
+        const int normalizedKey = (key == Qt::Key_Backtab) ? Qt::Key_Tab : key;
+        const QKeySequence pressed(keyEvent->modifiers() | normalizedKey);
 
-        if (key == Qt::Key_Tab || key == Qt::Key_Backtab ||
-            key == Qt::Key_Down || key == Qt::Key_Up)
-        {
-            if (key == Qt::Key_Backtab || key == Qt::Key_Up ||
-                (keyEvent->modifiers() & Qt::ShiftModifier))
-            {
-                m_timerShouldStart = true;
-                cycleSelectionBackward();
-            }
-            else {
-                m_timerShouldStart = true;
-                cycleSelection();
-            }
+        if (Settings::getInstance().cycleForwardShortcuts().contains(pressed)) {
+            m_timerShouldStart = true;
+            cycleSelection();
             return true;
         }
 
-        if (key == Qt::Key_Return || key == Qt::Key_Enter) {
+        if (Settings::getInstance().cycleBackwardShortcuts().contains(pressed))
+        {
+            m_timerShouldStart = true;
+            cycleSelectionBackward();
+            return true;
+        }
+
+        if (Settings::getInstance()
+                .activateSelectionAndHideShortcuts()
+                .contains(pressed))
+        {
             activateSelectionAndHide();
             return true;
         }
 
-        if (key == Qt::Key_Escape) {
+        if (Settings::getInstance().hideAppSwitcherShortcuts().contains(
+                pressed))
+        {
             if (m_ui->PTE_appSearch->hasFocus()) {
                 m_ui->PTE_appSearch->clear();
                 m_ui->PTE_appSearch->clearFocus();

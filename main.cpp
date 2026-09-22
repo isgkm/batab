@@ -1,4 +1,5 @@
 #include "batab.h"
+#include "constants.h"
 
 #include <QApplication>
 
@@ -6,9 +7,13 @@
 int main(int argc, char* argv[]) {
     const QApplication app(argc, argv);
 
+    QCoreApplication::setApplicationName("Batab");
+    QCoreApplication::setApplicationVersion(Constants::BATAB_VERSION);
+
     QApplication::setQuitOnLastWindowClosed(false);
 
-    const Batab mainWindow;
-    // mainWindow.show();
+    Batab batab;
+    batab.show();
+
     return QCoreApplication::exec();
 }

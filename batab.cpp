@@ -1,5 +1,7 @@
 #include "batab.h"
 
+#include "generalsettingswidget.h"
+#include "keyboardsettingswidget.h"
 #include "settings.h"
 #include "ui_batab.h"
 #include "winprocs.h"
@@ -26,8 +28,8 @@ Batab::Batab(QWidget* parent)
     createActions();
     createTrayIcon();
 
-    QObject::connect(m_hotCornerCheckTimer, &QTimer::timeout, this,
-                     &Batab::checkHotCorner);
+    connect(m_hotCornerCheckTimer, &QTimer::timeout, this,
+            &Batab::checkHotCorner);
     m_hotCornerCheckTimer->start(100);
 
     const QIcon icon(":/assets/icon.png");
@@ -35,6 +37,14 @@ Batab::Batab(QWidget* parent)
     setWindowIcon(icon);
 
     m_trayIcon->setToolTip("Batab");
+
+    m_ui->SW_optionDetails->addWidget(new GeneralSettingsWidget(this));
+    m_ui->SW_optionDetails->addWidget(new KeyboardSettingsWidget(this));
+
+    connect(m_ui->LW_option, &QListWidget::currentRowChanged,
+                     m_ui->SW_optionDetails, &QStackedWidget::setCurrentIndex);
+
+    m_ui->LW_option->setCurrentRow(0);
 
     m_trayIcon->show();
 }
@@ -76,22 +86,25 @@ void Batab::createTrayIcon() {
 }
 
 void Batab::checkHotCorner() {
+    if (!Settings::getInstance().hotCornerEnabled()) {
+        return;
+    }
+
     POINT cursorPos{};
     if (!GetCursorPos(&cursorPos)) {
         return;
     }
 
-    const int cornerSize{Settings::getInstance().hotCornerSize()};
-    const bool inTopLeftCorner =
-        cursorPos.x <= cornerSize && cursorPos.y <= cornerSize;
+    const bool mouseIsInHotCorner = Settings::isMouseInHotCornerArea(
+        cursorPos, Settings::getInstance().hotCornerTriggerArea());
 
-    if (inTopLeftCorner) {
+    if (mouseIsInHotCorner) {
         if (!m_hotCornerTimerRunning) {
             m_hotCornerTimerRunning = true;
             m_hotCornerElapsedTime.start();
         }
         else if (m_hotCornerElapsedTime.elapsed() >=
-                 Settings::getInstance().hotCornerElapsedTimeMs())
+                 Settings::getInstance().hotCornerRequiredTimeMs())
         {
             m_appSwitcher->show();
             m_appSwitcher->activateWindow();

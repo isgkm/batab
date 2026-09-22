@@ -25,6 +25,10 @@ qt_add_executable(batab
     indexedicondelegate.h
     constants.h
     settings.h settings.cpp
+    generalsettingswidget.h generalsettingswidget.cpp generalsettingswidget.ui
+    hotcornertriggerarea.h
+    keyboardsettingswidget.h keyboardsettingswidget.cpp keyboardsettingswidget.ui
+
 )
 
 # Configure compiler warnings
