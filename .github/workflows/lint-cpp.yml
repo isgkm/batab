@@ -1,0 +1,56 @@
+name: cpp-linter
+on:
+  push:
+    branches: [main]
+    paths: ['**/*.h', '**/*.hpp', '**/*.cpp', '**/*.ui', '**/*.qrc', '**/CMakeLists.txt']
+  pull_request:
+    branches: [main]
+    paths: ['**/*.h', '**/*.hpp', '**/*.cpp', '**/*.ui', '**/*.qrc', '**/CMakeLists.txt']
+
+env:
+  QT_VERSION: '6.8.3'
+
+jobs:
+  cpp-linter:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v7
+
+      - name: install ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: install qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          cache: true
+
+      - name: configure cmake
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: run clang-format and clang-tidy
+        uses: cpp-linter/cpp-linter-action@v2
+        id: linter
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          version: '23'
+          style: 'file'
+          tidy-checks: ''
+          database: build
+          files-changed-only: true
+          thread-comments: ${{ github.event.pull_request.head.repo.full_name == github.repository && 'update' }}
+
+      - name: fail fast
+        if: steps.linter.outputs.checks-failed > 0
+        run: exit 1
