@@ -50,6 +50,14 @@
       </item>
       <item>
        <property name="text">
+        <string>Theme</string>
+       </property>
+       <property name="icon">
+        <iconset theme="QIcon::ThemeIcon::WeatherClear"/>
+       </property>
+      </item>
+      <item>
+       <property name="text">
         <string>Rules</string>
        </property>
        <property name="icon">
