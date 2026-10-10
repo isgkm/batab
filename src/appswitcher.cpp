@@ -267,7 +267,8 @@ bool AppSwitcher::eventFilter(QObject* watched, QEvent* event) {
         auto* keyEvent = dynamic_cast<QKeyEvent*>(event);
         const int key = keyEvent->key();
         const int normalizedKey = (key == Qt::Key_Backtab) ? Qt::Key_Tab : key;
-        const QKeySequence pressed(keyEvent->modifiers() | normalizedKey);
+        const QKeySequence pressed(QKeyCombination(
+            keyEvent->modifiers(), static_cast<Qt::Key>(normalizedKey)));
 
         if (Settings::getInstance().cycleForwardShortcuts().contains(pressed)) {
             m_timerShouldStart = true;
